@@ -1,10 +1,19 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils.translation import gettext_lazy as _
+
 
 # Extend Django's built-in user model
 class User(AbstractUser):
     is_customer = models.BooleanField(default=False)
     is_partner = models.BooleanField(default=False)
+
+    email = models.EmailField(_('email address'), unique=True)
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []  # removes username from required fields
+
+    def __str__(self):
+        return self.email
 
 
 class Customer(models.Model):
