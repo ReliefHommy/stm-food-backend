@@ -4,9 +4,14 @@ from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from .models import PartnerStore
+from .models import PartnerStore,UserProfile
 
 User = get_user_model()
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.get_or_create(user=instance)
 
 @receiver(post_save, sender=User)
 def setup_partner_user(sender, instance, created, **kwargs):

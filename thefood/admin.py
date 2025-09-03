@@ -1,3 +1,4 @@
+
 from urllib import request
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
@@ -21,7 +22,7 @@ class OrderItemInline(admin.TabularInline):
     extra = 0
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'status', 'total_amount', 'placed_at')
+    list_display = ('id', 'user', 'status', 'total_amount', 'placed_at','delivery_date')
     list_filter = ('status', 'placed_at')
     search_fields = ('user__username', 'user__email')
     inlines = [OrderItemInline]
@@ -37,9 +38,10 @@ class CartAdmin(admin.ModelAdmin):
     inlines = [CartItemInline]
 #ProductAdmin
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('title', 'price', 'is_available', 'stock_quantity', 'brand', 'category')
+    list_display = ('title','slug', 'price', 'is_available', 'stock_quantity', 'brand', 'category')
     list_filter = ('brand', 'category', 'is_available')
     search_fields = ('title', 'description')
+    prepopulated_fields = {'slug': ('title',)}  # ✅ auto fills slug based on title
 
    
 

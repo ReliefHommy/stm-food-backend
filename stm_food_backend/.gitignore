@@ -1,17 +1,25 @@
 #python
 # Python
 __pycache__/
-*.pyc
-*.pyo
-
+*.py[cod]
+*.sqlite3
+*.log
 # Django
 db.sqlite3
 *.log
+/media/
+staticfiles/
+.env
+*.env
 
 # Environment
-.env
+venv/
+env/
 foodvenv/
 
 # VSCode/IDE
 .vscode/
 .idea/
+# System files
+.DS_Store
+Thumbs.db
