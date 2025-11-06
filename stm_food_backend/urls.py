@@ -17,6 +17,7 @@ urlpatterns = [
     # user profile
     #path('api/my-profile/', MyProfileView.as_view(), name='my-profile'),
     path('api/me/', MyProfileView.as_view(), name='my-profile'),
+    path("api/studio/", include("studio.urls")),  # ⬅ add this
     
     
 ]+static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

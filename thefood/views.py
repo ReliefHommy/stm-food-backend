@@ -1,16 +1,62 @@
-
-#from rest_framework.permissions import IsAuthenticated
-#from rest_framework.permissions import IsAuthenticatedOrReadOnly
-#from rest_framework import viewsets
-from rest_framework import viewsets, permissions, status
+#thefood/views.py
+from django.contrib.auth.decorators import login_required
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from io import BytesIO
+from django.http import FileResponse, Http404
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets, generics,permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Product,Order
-from .serializers import ProductSerializer,OrderSerializer, OrderCreateSerializer
+from .serializers import ProductSerializer,OrderCreateSerializer,OrderSerializer
 
-#thefood/views.py
 
+#download_receipt
+@login_required
+def download_receipt(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+        # Alternatively, you can use:
+        # order = get_object_or_404(Order, id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        raise Http404("Order does not exist")
+
+    #if order.user != request.user:
+        #raise PermissionDenied("You do not have permission to access this receipt.")
+
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    #width, height = A4
+
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, 800 - 100, "Order Receipt")
+    
+    p.setFont("Helvetica", 12)
+    p.drawString(100, 770, f"Order ID: {order.id}")
+    p.drawString(100, 750, f"Name: {order.full_name}")
+    p.drawString(100, 730, f"Phone: {order.phone}")
+    p.drawString(100, 710, f"Total: {order.total_amount} kr")
+
+    p.drawString(100, 680, "Items:")
+    
+    y = 660
+ 
+    for item in order.items.all():
+        p.drawString(120, y, f"{item.product.title} × {item.quantity} = {item.price_at_purchase * item.quantity} kr")
+        y -= 20
+
+    
+
+    p.showPage()
+    p.save()
+
+    buffer.seek(0)
+    return FileResponse(buffer, as_attachment=True, filename=f'receipt_order_{order.id}.pdf')
+
+
+#ProductViewSet
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -53,10 +99,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         instance.delete()
     
 
-
-
-
-
+#VendorProductListCreateView
 class VendorProductListCreateView(APIView):
     """Vendor-only list/create."""
     permission_classes = [permissions.IsAuthenticated]
@@ -77,7 +120,7 @@ class VendorProductListCreateView(APIView):
             product = serializer.save(partner_store=request.user.partner_store)
             return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+#OrderViewSet    
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = OrderCreateSerializer
@@ -92,3 +135,47 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+#OrderCreateView
+class OrderCreateAPIView(generics.CreateAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderCreateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        return response  # ✅ Automatically includes serialized data
+    
+
+#UserOrderListView
+class OrderListAPIView(APIView):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        orders = Order.objects.filter(user=user)
+        serializer = OrderSerializer(orders, many=True)
+
+        return Response(serializer.data)
+#OrderDetailView
+class OrderDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        user = request.user
+        try:
+            if user.is_partner and hasattr(user,'partner_store'):
+                order = Order.objects.get(pk=pk, store=user.partner_store)
+            else:
+                order = Order.objects.get(pk=pk, user=user)
+
+            serializer = OrderSerializer(order)
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response({'detail': 'Order not found'},status=404)
+        

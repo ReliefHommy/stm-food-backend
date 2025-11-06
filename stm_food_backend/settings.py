@@ -10,8 +10,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-
+from dotenv import load_dotenv
 import os
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'fallback-secret-for-development')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -29,6 +31,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'thefood',
+    'orders',
+    'studio',
     'rest_framework',
     'corsheaders',
 ]
@@ -144,8 +148,10 @@ USE_TZ = True
 #MEDIA_ROOT = BASE_DIR / 'media'
 #STATIC_ROOT = BASE_DIR / 'staticfiles'
 # NEW
-from pathlib import Path
-BASE_DIR = Path(__file__).resolve().parent.parent
+#from pathlib import Path
+#BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'

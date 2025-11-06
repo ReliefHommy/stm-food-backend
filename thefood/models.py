@@ -60,6 +60,7 @@ class Category(models.Model):
     name = models.CharField(max_length=100)
     icon = models.CharField(max_length=100, blank=True)
     slug = models.SlugField(unique=True)
+    image = models.ImageField(upload_to='product_images/',blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -156,6 +157,22 @@ class Recipe(models.Model):
     instructions = models.TextField()
     author = models.ForeignKey(PartnerStore, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    products = models.ManyToManyField(Product, related_name='recipes')  # link to products
+
+
+    def __str__(self):
+        return self.title
+    
+
+class Blog(models.Model):
+    title = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True)
+    content = models.TextField()
+    author = models.ForeignKey(PartnerStore, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    featured_image = models.ImageField(upload_to='blog_images/', blank=True, null=True)
+    related_recipe = models.ForeignKey(Recipe, null=True, blank=True, on_delete=models.SET_NULL)
+    related_products = models.ManyToManyField(Product, blank=True)
 
     def __str__(self):
         return self.title
