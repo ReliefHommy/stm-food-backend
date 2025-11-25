@@ -200,26 +200,21 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 # -------------------------------------------------
 # Security for production
 # -------------------------------------------------
 if not DEBUG:
-    # Tell Django that Railway handles HTTPS correctly
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # ✅ For now: DO NOT force HTTPS inside Django.
+    # Railway already serves your app over HTTPS.
+    SECURE_SSL_REDIRECT = False
 
-    # Keep HTTPS redirect AFTER fixing proxy header
-    SECURE_SSL_REDIRECT = True
+    # Turn off strict cookie+HSTS for now until everything is stable
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
 
-    # Recommended: add your Railway domain here
-    CSRF_TRUSTED_ORIGINS = [
-        "https://stm-food-backend-production.up.railway.app",
-    ]
-
-    # HSTS (safe once HTTPS works)
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
 
