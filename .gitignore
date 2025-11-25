@@ -1,29 +1,44 @@
-# Python
+### Python ###
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
+*.so
+
 *.egg-info/
 *.egg
+
 *.log
 
-# Django
+### Django ###
 db.sqlite3
-*.log
 local_settings.py
+*.pot
+*.py,cover
+instance/
+*.mo
 
-# Environment
+### Environment variables ###
 .env
+*.env
+
+### Virtual environment ###
+venv/
 foodvenv/
+ENV/
+env/
 
-
-# VSCode/IDE
+### IDE / Editor ###
 .vscode/
 .idea/
-foodvenv/
+*.swp
 
-# Media & static
-/media/
+### Media & static (generated at runtime) ###
+media/
 staticfiles/
+static/
 
-# System files
+### OS / System ###
 .DS_Store
+Thumbs.db
+

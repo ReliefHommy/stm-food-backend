@@ -33,6 +33,7 @@ DEBUG = ENVIRONMENT != "production"
 
 # Backend domain + local dev
 
+
 ALLOWED_HOSTS = [
     "api.somtammarket.com",
     "localhost",
@@ -59,6 +60,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://nokinhouse.tech",
     "http://localhost:3000",
 ]
+
+
 
 # Application definition
 
@@ -108,6 +111,8 @@ TEMPLATES = [
         },
     },
 ]
+
+
 
 
 WSGI_APPLICATION = "stm_food_backend.wsgi.application"
