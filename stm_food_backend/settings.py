@@ -1,25 +1,64 @@
 
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+
+# -------------------------------------------------
+# Base paths & env
+# -------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load .env from project root
+load_dotenv(BASE_DIR / ".env")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+# Security
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'fallback-secret-for-development')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-from dotenv import load_dotenv
-import os
+
+
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'fallback-secret-for-development')
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = []
+# Use ENVIRONMENT or DEBUG flag from env
+# In production, set ENVIRONMENT=production in your host.
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+DEBUG = ENVIRONMENT != "production"
 
+
+# -------------------------------------------------
+# Hosts & CORS / CSRF
+# -------------------------------------------------
+
+# Backend domain + local dev
+
+ALLOWED_HOSTS = [
+    "api.somtammarket.com",
+    "localhost",
+    "127.0.0.1",
+    ".up.railway.app",  # ← Railway auto domain
+]
+
+# Frontend origins that will call this API
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",              # local Next.js dev
+    "https://somtammarket.com",           # portal / landing
+    "https://www.somtammarket.com",       # www version if used
+    "https://food.somtammarket.com",      # STM Food frontend
+    "https://nokinhouse.tech",    # NIT studio frontend (later)
+]
+
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True  # needed if you use cookies with JWT / sessions
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://somtammarket.com",
+    "https://www.somtammarket.com",
+    "https://food.somtammarket.com",
+    "https://nokinhouse.tech",
+    "http://localhost:3000",
+]
 
 # Application definition
 
@@ -49,13 +88,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     
 ]
-CORS_ALLOW_ALL_ORIGINS = True 
 
-# CORS settings
-CORS_ALLOWED_ORIGINS = [
-"http://localhost:3000",
 
-]
+
 ROOT_URLCONF = 'stm_food_backend.urls'
 
 TEMPLATES = [
@@ -74,6 +109,13 @@ TEMPLATES = [
     },
 ]
 
+
+WSGI_APPLICATION = "stm_food_backend.wsgi.application"
+
+# -------------------------------------------------
+# REST Framework
+# -------------------------------------------------
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -81,35 +123,28 @@ REST_FRAMEWORK = {
 }
 
 
-WSGI_APPLICATION = 'stm_food_backend.wsgi.application'
+
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'stm_food_dj',
-        'USER': 'postgres',
-        'PASSWORD': 'Ddget_66Ju1278',
-        'HOST': 'localhost',
-        'PORT': '5432',
+         "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("POSTGRES_DB", "stm_food_dj"),
+        "USER": os.getenv("POSTGRES_USER", "postgres"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
+        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
+        "PORT": os.getenv("POSTGRES_PORT", "5432"),
     }
 }
 
 
 
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-#DATABASES = {
-    #'default': {
-        #'ENGINE': 'django.db.backends.sqlite3',
-        #'NAME': BASE_DIR / 'db.sqlite3',
-    #}
-#}
+# Custom user model
 AUTH_USER_MODEL = 'thefood.User'
 
 
+# -------------------------------------------------
 # Password validation
-# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
+# -------------------------------------------------
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -127,8 +162,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/4.2/topics/i18n/
+# -------------------------------------------------
+# i18n
+# -------------------------------------------------
 
 LANGUAGE_CODE = 'en-us'
 
@@ -139,18 +175,14 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-#STATIC_URL = 'static/'
-#MEDIA_URL = '/media/'
-#MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-#MEDIA_ROOT = BASE_DIR / 'media'
-#STATIC_ROOT = BASE_DIR / 'staticfiles'
-# NEW
-#from pathlib import Path
-#BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+
+# -------------------------------------------------
+# Static & Media
+# -------------------------------------------------
+
+
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 STATIC_URL = '/static/'
@@ -161,8 +193,21 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# -------------------------------------------------
+# Security for production
+# -------------------------------------------------
+if not DEBUG:
+    # Force HTTPS if your host provides SSL termination
+    SECURE_SSL_REDIRECT = True
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # HSTS (you can enable once you're sure HTTPS is stable)
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
