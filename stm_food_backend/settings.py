@@ -133,11 +133,11 @@ REST_FRAMEWORK = {
 DATABASES = {
     'default': {
          "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "stm_food_dj"),
+        "NAME": os.getenv("POSTGRES_DB", "railway"),
         "USER": os.getenv("POSTGRES_USER", "postgres"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "HOST": os.getenv("POSTGRES_HOST", "caboose.proxy.rlwy.net"),
+        "PORT": os.getenv("POSTGRES_PORT", "24124"),
     }
 }
 
