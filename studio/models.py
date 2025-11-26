@@ -41,7 +41,7 @@ class DesignTemplate(models.Model):
     tags = models.CharField(max_length=255, blank=True)  # "promo,thai,summer"
     created_at = models.DateTimeField(auto_now_add=True)
     template_type = models.CharField(max_length=50, choices=TEMPLATE_TYPES)
-    thumbnail = models.ImageField(upload_to="studio/templates/thumbnails/")
+    thumbnail = models.URLField(max_length=500, null=True, blank=True)
 
     ai_tool_key = models.CharField(
         max_length=100,

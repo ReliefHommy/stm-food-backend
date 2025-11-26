@@ -54,7 +54,7 @@ class UserProfile(models.Model):
     is_vendor = models.BooleanField(default=False)
     is_customer = models.BooleanField(default=True)
     phone = models.CharField(max_length=20, blank=True)
-    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    avatar = models.URLField(max_length=500, null=True, blank=True)
     address = models.TextField(blank=True)
 
     def __str__(self):
@@ -79,7 +79,7 @@ class PartnerStore(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE,related_name='partner_store')
     store_name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    logo = models.ImageField(upload_to='partner_logos/', blank=True)
+    logo = models.URLField(max_length=500, null=True, blank=True)
     contact_email = models.EmailField()
     website = models.URLField(blank=True)
 
@@ -91,7 +91,7 @@ class Category(models.Model):
     name = models.CharField(max_length=100)
     icon = models.CharField(max_length=100, blank=True)
     slug = models.SlugField(unique=True)
-    image = models.ImageField(upload_to='product_images/',blank=True, null=True)
+    image = models.URLField(max_length=500, null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -99,7 +99,7 @@ class Category(models.Model):
 
 class Brand(models.Model):
     name = models.CharField(max_length=100)
-    logo = models.ImageField(upload_to='brand_logos/', blank=True)
+    logo = models.URLField(max_length=500, null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -110,7 +110,7 @@ class Product(models.Model):
     slug = models.SlugField(max_length=255, unique=True, blank=True)  # 👈 Add this line
     subtitle = models.CharField(max_length=255, blank=True)
     description = models.TextField()
-    image = models.ImageField(upload_to='product_images/',blank=True, null=True)
+    image = models.URLField(max_length=500, null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock_quantity = models.IntegerField(blank=True, null=True)
     is_available = models.BooleanField(default=True)
@@ -183,7 +183,7 @@ class Recipe(models.Model):
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
     description = models.TextField()
-    image = models.ImageField(upload_to='recipe_images/')
+    image = models.URLField(max_length=500, null=True, blank=True)
     ingredients = models.TextField()
     instructions = models.TextField()
     author = models.ForeignKey(PartnerStore, on_delete=models.CASCADE)
@@ -201,7 +201,7 @@ class Blog(models.Model):
     content = models.TextField()
     author = models.ForeignKey(PartnerStore, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
-    featured_image = models.ImageField(upload_to='blog_images/', blank=True, null=True)
+    featured_image = models.URLField(max_length=500, null=True, blank=True)
     related_recipe = models.ForeignKey(Recipe, null=True, blank=True, on_delete=models.SET_NULL)
     related_products = models.ManyToManyField(Product, blank=True)
 
