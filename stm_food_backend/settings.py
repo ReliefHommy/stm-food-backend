@@ -38,8 +38,12 @@ ALLOWED_HOSTS = [
     "api.somtammarket.com",
     "localhost",
     "127.0.0.1",
-    ".up.railway.app",  # ← Railway auto domain
+    "stm-food-backend-production.up.railway.app",  # ← Railway auto domain
 ]
+if ENVIRONMENT == "production":
+    CSRF_TRUSTED_ORIGINS = [
+        "https://stm-food-backend-production.up.railway.app",
+    ]
 
 # Frontend origins that will call this API
 CORS_ALLOWED_ORIGINS = [
