@@ -5,6 +5,8 @@ from django.conf import settings
 
 def get_client():
     api_key = getattr(settings, "OPENAI_API_KEY", None) or os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing OPENAI_API_KEY")  # better error in admin
     return OpenAI(api_key=api_key)
 
 def gen_auto_post(language, topic, keywords, tone):

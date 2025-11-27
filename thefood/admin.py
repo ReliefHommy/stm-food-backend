@@ -38,7 +38,7 @@ class CartAdmin(admin.ModelAdmin):
     inlines = [CartItemInline]
 #ProductAdmin
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('title','slug', 'price', 'is_available', 'stock_quantity', 'brand', 'category')
+    list_display = ('title','slug', 'price', 'is_available', 'stock_quantity', 'brand', 'category','partner_store', 'created_at','image')
     list_filter = ('brand', 'category', 'is_available')
     search_fields = ('title', 'description')
     prepopulated_fields = {'slug': ('title',)}  # ✅ auto fills slug based on title
@@ -48,12 +48,12 @@ class ProductAdmin(admin.ModelAdmin):
   
 # RecipeAsmin
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'author', 'created_at')
+    list_display = ('title', 'author', 'created_at', 'image')
     search_fields = ('title', 'ingredients', 'instructions')
   
 # partners see only selected models in the sidebar
 class PartnerStoreAdmin(admin.ModelAdmin):
-    list_display = ('store_name', 'user', 'contact_email')
+    list_display = ('store_name', 'user', 'contact_email', 'website', 'logo')
     search_fields = ('store_name', 'user__username')
  
 
