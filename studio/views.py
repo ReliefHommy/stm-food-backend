@@ -48,6 +48,19 @@ class AutoPostViewSet(viewsets.ModelViewSet):
     queryset = AutoPost.objects.all().order_by("-created_at")
     serializer_class = AutoPostSerializer
 
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+
+        # If you want all manually created posts to default to STM + posted:
+        platforms = serializer.validated_data.get("platforms") or "stm"
+        status = serializer.validated_data.get("status") or "posted"
+
+        serializer.save(
+            owner=user,
+            platforms=platforms,
+            status=status,
+        )
+
     @action(detail=True, methods=["post"])
     def generate(self, request, pk=None):
         obj = self.get_object()

@@ -58,7 +58,7 @@ class AutoPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = AutoPost
         fields = "__all__"
-        read_only_fields = ["caption", "hashtags", "image_prompt", "created_at", "owner"]
+        read_only_fields = ["id", "created_at", "owner"]
 
 
 from rest_framework import serializers

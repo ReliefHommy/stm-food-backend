@@ -1,7 +1,4 @@
 
-
-
-
 from django.contrib import admin
 from .models import AutoPost, DesignTemplate, ReviewReply, Campaign,CampaignPost,Pillar,Theme,Topic,Asset
 
