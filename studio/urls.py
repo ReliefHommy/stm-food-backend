@@ -12,5 +12,5 @@ router.register("campaigns", CampaignViewSet,basename='campaigns')
 
 urlpatterns = [
     path("", include(router.urls)),
-    path("api/public-posts/", STMPostListAPIView.as_view(), name="stm-public-posts")
+    path("public-posts/", STMPostListAPIView.as_view(), name="stm-public-posts")
 ]
