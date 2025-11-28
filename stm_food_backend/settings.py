@@ -49,10 +49,11 @@ if ENVIRONMENT == "production":
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",              # local Next.js dev
     "https://somtammarket.com",           # portal / landing
-    "https://www.somtammarket.com",       # www version if used
-    "https://food.somtammarket.com",      # STM Food frontend
-    "https://nokinhouse.tech", 
-    "https://stm-food-backend-production.up.railway.app"   
+    "https://www.somtammarket.com", 
+    "https://nokinhouse.tech",      # www version if used
+     # STM Food frontend
+    "https://stm-portal-frontend.vercel.app",
+    "https://food.somtammarket.com",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -64,7 +65,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://food.somtammarket.com",
     "https://nokinhouse.tech",
     "http://localhost:3000",
-     "https://stm-food-backend-production.up.railway.app"  ,
+    "https://stm-portal-frontend.vercel.app"  ,
 ]
 
 
