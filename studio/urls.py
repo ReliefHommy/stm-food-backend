@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import AutoPostViewSet, DesignTemplateViewSet, ReviewReplyViewSet, CampaignViewSet,CampaignPostViewSet
+from .views import STMPostListAPIView, AutoPostViewSet, DesignTemplateViewSet, ReviewReplyViewSet, CampaignViewSet,CampaignPostViewSet
 
 router = DefaultRouter()
 router.register(r"auto-posts", AutoPostViewSet,basename='auto-post')
@@ -12,4 +12,5 @@ router.register("campaigns", CampaignViewSet,basename='campaigns')
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("api/public-posts/", STMPostListAPIView.as_view(), name="stm-public-posts")
 ]

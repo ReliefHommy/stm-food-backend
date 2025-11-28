@@ -60,6 +60,44 @@ class AutoPostSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["caption", "hashtags", "image_prompt", "created_at", "owner"]
 
+
+from rest_framework import serializers
+from .models import AutoPost
+
+class PublicAutoPostSerializer(serializers.ModelSerializer):
+    pillar = serializers.StringRelatedField()  # or customize if you have slug/name
+    hashtags_list = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AutoPost
+        fields = [
+            "id",
+            "platforms",
+            "pillar",
+            "topic",
+            "vendor_name",
+            "language",
+            "caption",
+            "hashtags",       # raw text like "#thai #food"
+            "hashtags_list",  # optional parsed list
+            "image_prompt",
+            "created_at",
+        ]
+
+    def get_hashtags_list(self, obj):
+        """
+        If you store hashtags as comma- or space-separated text,
+        turn them into a list for the frontend.
+        """
+        if not obj.hashtags:
+            return []
+        # You can adapt this depending on your format
+        parts = obj.hashtags.replace("#", " ").replace("\n", " ").split(",")
+        if len(parts) == 1:
+            parts = obj.hashtags.replace("#", " ").split()
+        return [p.strip() for p in parts if p.strip()]
+
+
 class DesignTemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DesignTemplate

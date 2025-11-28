@@ -1,12 +1,12 @@
 import json
 from rest_framework.views import APIView
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import AutoPost, DesignTemplate, ReviewReply, Campaign,CampaignPost
 from .serializers import (
     AutoPostSerializer, DesignTemplateSerializer,
-    ReviewReplySerializer, CampaignSerializer,CampaignPostSerializer
+    ReviewReplySerializer, CampaignSerializer,CampaignPostSerializer,PublicAutoPostSerializer
 )
 from .ai import gen_auto_post, gen_review_reply, gen_campaign
 
@@ -57,6 +57,27 @@ class AutoPostViewSet(viewsets.ModelViewSet):
         obj.image_prompt = data.get("image_prompt", "")
         obj.save()
         return Response(AutoPostSerializer(obj).data)
+    
+
+
+class STMPostListAPIView(generics.ListAPIView):
+    serializer_class = PublicAutoPostSerializer
+
+    def get_queryset(self):
+        qs = AutoPost.objects.filter(
+            platforms="stm",
+            status="posted",   # only published ones
+        ).order_by("-created_at")
+
+        lang = self.request.query_params.get("lang")
+        pillar = self.request.query_params.get("pillar")
+
+        if lang:
+            qs = qs.filter(language=lang)
+        if pillar:
+            qs = qs.filter(pillar__name=pillar)  # or pillar__slug
+
+        return qs
 
 class DesignTemplateViewSet(viewsets.ModelViewSet):
     queryset = DesignTemplate.objects.all().order_by("-created_at")
