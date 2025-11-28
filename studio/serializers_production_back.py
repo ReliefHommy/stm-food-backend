@@ -8,17 +8,6 @@ class CampaignPostSerializer(serializers.ModelSerializer):
         fields = ('id','title','campaign','pillar','image_prompt','email_subject','email_body',
                   'fb_text','ig_text','pin_title','pin_desc','cta','hashtags','created_at')
 
-    # 👇 This is the important line
-        extra_kwargs = {
-            "campaign": {"read_only": True}
-            # or: "campaign": {"required": False}
-        }
-
-
-
-
-
-
 class CampaignSerializer(serializers.ModelSerializer):
     posts = CampaignPostSerializer(many=True)
     class Meta:
