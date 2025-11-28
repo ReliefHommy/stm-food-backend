@@ -66,6 +66,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://nokinhouse.tech",
     "http://localhost:3000",
     "https://stm-portal-frontend.vercel.app"  ,
+    "https://stm-food-backend-production.up.railway.app",
 ]
 
 
