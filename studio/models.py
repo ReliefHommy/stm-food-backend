@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from django.utils.text import slugify
 
 # Create your models here.
 
@@ -104,6 +105,44 @@ class CampaignPost(models.Model):
     
     def __str__(self):
         return self.title
+    
+
+
+class PublicPost(models.Model):
+    campaign_post = models.OneToOneField(
+        "studio.CampaignPost",
+        on_delete=models.CASCADE,
+        related_name="public_post",
+        null=True,
+        blank=True,
+        help_text="Source AI post this public post was refined from."
+    )
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(unique=True)
+    excerpt = models.TextField(blank=True)
+    body = models.TextField()
+    image_url = models.URLField(blank=True)
+    language = models.CharField(max_length=5, default="en")
+    is_published = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title)[:40]
+            slug = base_slug
+            n = 1
+            while PublicPost.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{n}"
+                n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+
+
     
 
 

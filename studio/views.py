@@ -3,10 +3,10 @@ from rest_framework.views import APIView
 from rest_framework import viewsets, permissions, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import AutoPost, DesignTemplate, ReviewReply, Campaign,CampaignPost
+from .models import AutoPost, DesignTemplate, ReviewReply, Campaign,CampaignPost,PublicPost
 from .serializers import (
     AutoPostSerializer, DesignTemplateSerializer,
-    ReviewReplySerializer, CampaignSerializer,CampaignPostSerializer,PublicAutoPostSerializer
+    ReviewReplySerializer, CampaignSerializer,CampaignPostSerializer,CMSPostSerializer,STMPostSerializer
 )
 from .ai import gen_auto_post, gen_review_reply, gen_campaign
 
@@ -73,8 +73,10 @@ class AutoPostViewSet(viewsets.ModelViewSet):
     
 
 
-class STMPostListAPIView(generics.ListAPIView):
-    serializer_class = PublicAutoPostSerializer
+class CMSPostListAPIView(generics.ListAPIView):
+    queryset = PublicPost.objects.all().order_by("-published_at", "-created_at")
+    serializer_class = CMSPostSerializer
+    permission_classes = [permissions.IsAuthenticated]  # CMS is private
 
     def get_queryset(self):
         qs = AutoPost.objects.filter(
@@ -107,6 +109,15 @@ class ReviewReplyViewSet(viewsets.ModelViewSet):
         obj.reply_text = reply
         obj.save()
         return Response(ReviewReplySerializer(obj).data)
+
+
+
+class STMPostViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = PublicPost.objects.filter(is_published=True).order_by("-published_at", "-created_at")
+    serializer_class = STMPostSerializer
+    permission_classes = [permissions.AllowAny]   # ← PUBLIC
+
+
 
 
 

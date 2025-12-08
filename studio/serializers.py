@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import AutoPost, DesignTemplate, ReviewReply, Campaign, CampaignPost
+from .models import AutoPost, DesignTemplate, ReviewReply, Campaign, CampaignPost,PublicPost
 
 
 class CampaignPostSerializer(serializers.ModelSerializer):
@@ -64,7 +64,7 @@ class AutoPostSerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from .models import AutoPost
 
-class PublicAutoPostSerializer(serializers.ModelSerializer):
+class CMSPostSerializer(serializers.ModelSerializer):
     pillar = serializers.StringRelatedField()  # or customize if you have slug/name
     hashtags_list = serializers.SerializerMethodField()
 
@@ -111,6 +111,32 @@ class ReviewReplySerializer(serializers.ModelSerializer):
         model = ReviewReply
         fields = "__all__"
         read_only_fields = ["reply_text", "created_at", "owner"]
+
+
+# PORTAL posts
+
+class STMPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PublicPost
+        fields = [
+            "id",
+            "title",
+            "slug",
+            "excerpt",
+            "body",
+            "image_url",
+            "language",
+            "published_at",
+            "created_at",
+        ]
+
+
+
+
+    
+
+
+
 
 
 
