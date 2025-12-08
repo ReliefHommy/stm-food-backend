@@ -1,6 +1,6 @@
 
 from django.contrib import admin
-from .models import AutoPost, DesignTemplate, ReviewReply, Campaign,CampaignPost,Pillar,Theme,Topic,Asset
+from .models import AutoPost,PublicPost, DesignTemplate, ReviewReply, Campaign,CampaignPost,Pillar,Theme,Topic,Asset
 
 class AutoPostAdmin(admin.ModelAdmin):
     list_display = ('title', 'scheduled_time', 'status')
@@ -20,6 +20,7 @@ class CampaignPostAdmin(admin.ModelAdmin):
 
 
 admin.site.register(AutoPost)
+admin.site.register(PublicPost)
 admin.site.register(DesignTemplate)
 admin.site.register(ReviewReply)
 admin.site.register(Campaign)

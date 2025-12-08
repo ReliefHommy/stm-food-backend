@@ -1,7 +1,9 @@
 import json
 from rest_framework.views import APIView
-from rest_framework import viewsets, permissions, generics
+from rest_framework import viewsets, permissions, generics,status
+from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
+from django.utils import timezone
 from rest_framework.response import Response
 from .models import AutoPost, DesignTemplate, ReviewReply, Campaign,CampaignPost,PublicPost
 from .serializers import (
@@ -42,6 +44,7 @@ class CampaignPostViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CampaignPost.objects.all().order_by("-created_at")
     serializer_class = CampaignPostSerializer
     permission_classes = [permissions.AllowAny]  # keep simple for now
+    #permission_classes = [permissions.IsAuthenticated]
 
 
 class AutoPostViewSet(viewsets.ModelViewSet):
@@ -97,10 +100,12 @@ class CMSPostListAPIView(generics.ListAPIView):
 class DesignTemplateViewSet(viewsets.ModelViewSet):
     queryset = DesignTemplate.objects.all().order_by("-created_at")
     serializer_class = DesignTemplateSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 class ReviewReplyViewSet(viewsets.ModelViewSet):
     queryset = ReviewReply.objects.all().order_by("-created_at")
     serializer_class = ReviewReplySerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     @action(detail=True, methods=["post"])
     def generate(self, request, pk=None):
@@ -117,6 +122,50 @@ class STMPostViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = STMPostSerializer
     permission_classes = [permissions.AllowAny]   # ← PUBLIC
 
+
+
+class PublishFromCampaignAPIView(APIView):
+    """
+    POST { "campaign_post_id": 5 }
+    → creates/updates a PublicPost from that CampaignPost.
+    """
+    permission_classes = [permissions.IsAuthenticated]  # protect this!
+
+    def post(self, request, *args, **kwargs):
+        campaign_post_id = request.data.get("campaign_post_id")
+        if not campaign_post_id:
+            return Response(
+                {"detail": "campaign_post_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cp = get_object_or_404(CampaignPost, pk=campaign_post_id)
+
+    
+        # create or update snapshot PublicPost
+        pp, created = PublicPost.objects.get_or_create(
+            campaign_post=cp,
+            defaults={
+                "title": cp.title or cp.pin_title or cp.email_subject or "",
+                "excerpt": (cp.fb_text or cp.pin_desc or "")[:160],
+                "body": cp.email_body or cp.fb_text or cp.pin_desc or "",
+                "language": getattr(cp.campaign, "language", "en"),
+                "is_published": True,
+                "published_at": timezone.now(),
+                "image_url": (
+                    cp.designTemplate.image_url
+                    if getattr(cp, "designTemplate", None)
+                    and getattr(cp.designTemplate, "image_url", None)
+                    else ""
+                ),
+            },
+        )
+
+        # if existing, you could also refresh fields here if you want
+        serializer = STMPostSerializer(pp)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+        
 
 
 
