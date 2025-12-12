@@ -15,6 +15,7 @@ urlpatterns = [
     path("", include(router.urls)),
     # CMS - posts for STM consumption
     path("cms-posts/", CMSPostListAPIView.as_view(), name="cms-posts"),
-    path("publish-from-campaign/<int:campaign_id>/", PublishFromCampaignAPIView.as_view(), name="publish-from-campaign"),
+    path(""
+    "<int:campaign_id>/", PublishFromCampaignAPIView.as_view(), name="publish-from-campaign"),
  
 ]

@@ -125,48 +125,65 @@ class STMPostViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class PublishFromCampaignAPIView(APIView):
-    """
-    POST { "campaign_post_id": 5 }
-    → creates/updates a PublicPost from that CampaignPost.
-    """
-    permission_classes = [permissions.IsAuthenticated]  # protect this!
 
-    def post(self, request, *args, **kwargs):
-        campaign_post_id = request.data.get("campaign_post_id")
-        if not campaign_post_id:
-            return Response(
-                {"detail": "campaign_post_id is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    #permission_classes = [permissions.IsAuthenticated]  # protect this!
+    permission_classes = [permissions.AllowAny] 
 
-        cp = get_object_or_404(CampaignPost, pk=campaign_post_id)
+    def post(self, request,campaign_id, *args, **kwargs):
+        cp = get_object_or_404(CampaignPost, pk=campaign_id)
+        campaign_post_id = campaign_id
+        # 1) Take refined values from Studio if present
+        refined_title = request.data.get("title")
+        refined_excerpt = request.data.get("excerpt")
+        refined_body = request.data.get("body")
+        refined_image_url = request.data.get("image_url")
 
-    
-        # create or update snapshot PublicPost
-        pp, created = PublicPost.objects.get_or_create(
+        # 2) Fallbacks from CampaignPost if not provided
+
+        title = refined_title or cp.title or cp.pin_title or cp.email_subject or ""
+        excerpt = refined_excerpt or (cp.fb_text or getattr(cp, "pin_desc", "") or "")[:160]
+        body = refined_body or cp.email_body or cp.fb_text or getattr(cp, "pin_desc", "") or ""
+
+        if refined_image_url:
+            image_url = refined_image_url
+        elif getattr(cp, "designTemplate", None) and getattr(cp.designTemplate, "image_url", None):
+            image_url = cp.designTemplate.image_url
+        else:
+            image_url = ""
+
+        language = getattr(cp.campaign, "language", "en")
+
+        # 3) Create or update snapshot PublicPost
+        pp, created = PublicPost.objects.update_or_create(
             campaign_post=cp,
             defaults={
-                "title": cp.title or cp.pin_title or cp.email_subject or "",
-                "excerpt": (cp.fb_text or cp.pin_desc or "")[:160],
-                "body": cp.email_body or cp.fb_text or cp.pin_desc or "",
-                "language": getattr(cp.campaign, "language", "en"),
+                "title": title,
+                "excerpt": excerpt,
+                "body": body,
+                "image_url": image_url,
+                "language": language,
                 "is_published": True,
                 "published_at": timezone.now(),
-                "image_url": (
-                    cp.designTemplate.image_url
-                    if getattr(cp, "designTemplate", None)
-                    and getattr(cp.designTemplate, "image_url", None)
-                    else ""
-                ),
             },
         )
-
-        # if existing, you could also refresh fields here if you want
         serializer = STMPostSerializer(pp)
-        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+    
+# Optional: allow GET from browser for quick testing
+    def get(self, request, campaign_id, *args, **kwargs):
+        return self.post(request, campaign_id, *args, **kwargs)    
+    
+    
 
+       
+
+      
+
+    
         
-
 
 
 
