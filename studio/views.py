@@ -145,15 +145,22 @@ class PublishFromCampaignAPIView(APIView):
         body = refined_body or cp.email_body or cp.fb_text or getattr(cp, "pin_desc", "") or ""
 
         refined_image_url = request.data.get("image_url")
-        template = getattr(cp, "DesignTemplate", None)   # FK on CampaignPost
+        template = getattr(cp, "designTemplate", None)  # use your real field name
         thumb = getattr(template, "thumbnail_url", "") if template else ""
 
-        if refined_image_url:
-            image_url = refined_image_url
-        elif thumb:
-            image_url = thumb
-        else:
-            image_url = ""
+        refined_image_url = request.data.get("image_url")
+
+# ✅ robust: try common attribute names
+        template = (
+        getattr(cp, "designTemplate", None)
+        or getattr(cp, "design_template", None)
+        or getattr(cp, "DesignTemplate", None)
+        )
+
+        thumb = getattr(template, "thumbnail_url", "") if template else ""
+
+        image_url = refined_image_url or thumb or ""
+
 
 
 
