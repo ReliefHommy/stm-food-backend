@@ -144,12 +144,19 @@ class PublishFromCampaignAPIView(APIView):
         excerpt = refined_excerpt or (cp.fb_text or getattr(cp, "pin_desc", "") or "")[:160]
         body = refined_body or cp.email_body or cp.fb_text or getattr(cp, "pin_desc", "") or ""
 
+        refined_image_url = request.data.get("image_url")
+        template = getattr(cp, "DesignTemplate", None)   # FK on CampaignPost
+        thumb = getattr(template, "thumbnail_url", "") if template else ""
+
         if refined_image_url:
             image_url = refined_image_url
-        elif getattr(cp, "designTemplate", None) and getattr(cp.designTemplate, "image_url", None):
-            image_url = cp.designTemplate.image_url
+        elif thumb:
+            image_url = thumb
         else:
             image_url = ""
+
+
+
 
         language = getattr(cp.campaign, "language", "en")
 

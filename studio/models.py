@@ -99,7 +99,7 @@ class CampaignPost(models.Model):
     pin_desc = models.TextField(blank=True)
     cta = models.CharField(max_length=255, blank=True)
     hashtags = models.JSONField(default=list, blank=True)
-    DesignTemplate = models.ForeignKey(DesignTemplate, on_delete=models.CASCADE, related_name="campaignPosts", null=True, blank=True)
+    designTemplate = models.ForeignKey(DesignTemplate, on_delete=models.CASCADE, related_name="campaignPosts", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     
