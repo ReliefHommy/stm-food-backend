@@ -1,10 +1,10 @@
 import json
 from rest_framework.views import APIView
 from rest_framework import viewsets, permissions, generics,status
-from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
-from django.utils import timezone
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from .models import AutoPost, DesignTemplate, ReviewReply, Campaign,CampaignPost,PublicPost
 from .serializers import (
     AutoPostSerializer, DesignTemplateSerializer,
@@ -121,6 +121,11 @@ class STMPostViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = PublicPost.objects.filter(is_published=True).order_by("-published_at", "-created_at")
     serializer_class = STMPostSerializer
     permission_classes = [permissions.AllowAny]   # ← PUBLIC
+
+    @action(detail=False, url_path=r"by-slug/(?P<slug>[-a-zA-Z0-9_]+)")
+    def by_slug(self, request, slug=None):
+        post = get_object_or_404(self.get_queryset(), slug=slug)
+        return Response(self.get_serializer(post).data)
 
 
 
