@@ -34,6 +34,10 @@ class DesignTemplate(models.Model):
         ("yt_thumb", "YouTube Thumbnail"),
         ("blog_hero", "Blog Hero"),
     ]
+    MEDIA_TYPES = [
+        ("image", "Image"),
+        ("video", "Video"),
+    ]
     title = models.CharField(max_length=200)
     pillar = models.ForeignKey(Pillar, on_delete=models.CASCADE, related_name="design_templates", null=True, blank=True)
     category = models.CharField(max_length=120, blank=True)  # menu, promo, banner, etc.
@@ -43,6 +47,10 @@ class DesignTemplate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     template_type = models.CharField(max_length=50, choices=TEMPLATE_TYPES)
     thumbnail = models.URLField(max_length=500, null=True, blank=True)
+    media_type = models.CharField(max_length=10, choices=MEDIA_TYPES, default="image")
+    video_url = models.URLField(blank=True)  # mp4 or hosted video url (R2, Cloudflare stream, etc.)
+
+
 
     ai_tool_key = models.CharField(
         max_length=100,
