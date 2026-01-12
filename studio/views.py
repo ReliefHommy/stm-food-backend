@@ -148,7 +148,6 @@ class PublishFromCampaignAPIView(APIView):
         title = refined_title or cp.title or cp.pin_title or cp.email_subject or ""
         excerpt = refined_excerpt or (cp.fb_text or getattr(cp, "pin_desc", "") or "")[:160]
         body = refined_body or cp.email_body or cp.fb_text or getattr(cp, "pin_desc", "") or ""
-
         refined_image_url = request.data.get("image_url")
         template = getattr(cp, "designTemplate", None)  # use your real field name
         thumb = getattr(template, "thumbnail_url", "") if template else ""

@@ -47,25 +47,41 @@ if ENVIRONMENT == "production":
 
 # Frontend origins that will call this API
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",              # local Next.js dev
-    "https://somtammarket.com",           # portal / landing
-    "https://www.somtammarket.com",       # www version if used
-    "https://food.somtammarket.com",      # STM Food frontend
+    "http://localhost:3000",  
+    "https://somtammarket.com", 
+    "https://www.somtammarket.com", 
     "https://nokinhouse.tech", 
-    "https://stm-food-backend-production.up.railway.app"   
+    "https://stm-portal-frontend.vercel.app",
+    "https://food.somtammarket.com",
+]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOW_CREDENTIALS = True  # needed if you use cookies with JWT / sessions
+CORS_ALLOW_CREDENTIALS = True  
 
 CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
     "https://somtammarket.com",
     "https://www.somtammarket.com",
     "https://food.somtammarket.com",
     "https://nokinhouse.tech",
-    "http://localhost:3000",
-     "https://stm-food-backend-production.up.railway.app"  ,
+    "https://stm-portal-frontend.vercel.app"  ,
+
 ]
+CSRF_COOKIE_DOMAIN = ".somtammarket.com"
+SESSION_COOKIE_DOMAIN = ".somtammarket.com"
+
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SAMESITE = "None"
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
 
 
 

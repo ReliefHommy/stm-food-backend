@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from thefood.views import OrderListAPIView
-from .views import ProductViewSet, OrderViewSet,OrderCreateAPIView,OrderListAPIView,OrderDetailAPIView
+from .views import ProductViewSet, OrderViewSet,OrderCreateAPIView,OrderListAPIView,OrderDetailAPIView,VendorProductListCreateView
 
 
 
@@ -14,6 +14,7 @@ router.register(r'orders', OrderViewSet, basename='orders')
 urlpatterns = [
   
     # ViewSet routes: /products/, /orders/
+    path('vendor/products/', VendorProductListCreateView.as_view(), name='vendor-product-list-create'),
     path("", include(router.urls)),
 
     # Extra order endpoints

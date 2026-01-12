@@ -7,7 +7,7 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         #fields = '__all__'
         fields = ['id', 'title', 'slug','description', 'price', 'stock_quantity', 'image', 'partner_store', 'created_at']
-        read_only_fields = ['id', 'partner_store', 'created_at']
+        read_only_fields = ['id', 'partner_store', 'created_at', 'slug']
 
         extra_kwargs = {
             'image': {'required': False, 'allow_null': True},
