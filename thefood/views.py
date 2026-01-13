@@ -9,8 +9,8 @@ from rest_framework import viewsets, generics,permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Product,Order
-from .serializers import ProductSerializer,OrderCreateSerializer,OrderSerializer
+from .models import Product, Order, Category
+from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer
 
 
 #download_receipt
@@ -98,6 +98,14 @@ class ProductViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You are not allowed to delete this product.")
         instance.delete()
     
+
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only API for categories accessible via slug lookup."""
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'slug'
+
 
 #VendorProductListCreateView
 class VendorProductListCreateView(APIView):

@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import Order, OrderItem
-from .models import Product
+from .models import Order, OrderItem, Product, Category
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,6 +10,16 @@ class ProductSerializer(serializers.ModelSerializer):
 
         extra_kwargs = {
             'image': {'required': False, 'allow_null': True},
+        }
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'slug', 'icon', 'image']
+        read_only_fields = ['id', 'slug']
+        extra_kwargs = {
+            'image': {'required': False, 'allow_null': True},
+            'icon': {'required': False, 'allow_blank': True},
         }
 
         
