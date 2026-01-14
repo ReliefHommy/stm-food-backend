@@ -40,20 +40,19 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "stm-food-backend-production.up.railway.app",  # ← Railway auto domain
 ]
-if ENVIRONMENT == "production":
-    CSRF_TRUSTED_ORIGINS = [
-        "https://stm-food-backend-production.up.railway.app",
-    ]
 
-# Frontend origins that will call this API
+# CORS (frontend -> backend API)
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  
-    "https://somtammarket.com", 
-    "https://www.somtammarket.com", 
-    "https://nokinhouse.tech", 
-    "https://stm-portal-frontend.vercel.app",
+    "http://localhost:3000",
+    "https://somtammarket.com",
+    "https://www.somtammarket.com",
     "https://food.somtammarket.com",
+    "https://nokinhouse.tech",
+    "https://stm-portal-frontend.vercel.app",
 ]
+
+
+
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.vercel\.app$",
@@ -61,7 +60,7 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True  
-
+# CSRF trusted origins (must include scheme)
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "https://somtammarket.com",
@@ -71,17 +70,39 @@ CSRF_TRUSTED_ORIGINS = [
     "https://stm-portal-frontend.vercel.app",
 ]
 
-# Cookie domain: only set when hosting under the official somtammarket domain.
-# For ephemeral hosts like Railway (stm-food-backend-production.up.railway.app),
-# we should not force a different cookie domain, otherwise session/CSRF cookies
-# will not be sent and admin login will fail.
-COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "")
-if COOKIE_DOMAIN:
-    CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
-    SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
-else:
-    CSRF_COOKIE_DOMAIN = None
-    SESSION_COOKIE_DOMAIN = None
+if ENVIRONMENT == "production":
+    # Ensure Railway origin is trusted for admin POST
+    CSRF_TRUSTED_ORIGINS += [
+        "https://stm-food-backend-production.up.railway.app",
+    ] 
+
+# -------------------------------------------------
+# Proxy / HTTPS awareness (Railway)
+# -------------------------------------------------
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
+# -------------------------------------------------
+# Cookie domain (IMPORTANT)
+# -------------------------------------------------
+# Only set COOKIE_DOMAIN when you're serving the backend on your own domain.
+# DO NOT set it when accessing admin via *.up.railway.app.
+COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "").strip() or None
+CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
+SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
+
+# -------------------------------------------------
+# Cookies for admin + session
+# -------------------------------------------------
+# Admin login uses CSRF + session cookies. Keep them consistent.
+# If SameSite=None, cookies MUST be Secure=True in modern browsers.
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = "Lax"
+
+CSRF_COOKIE_SECURE = (ENVIRONMENT == "production")
+SESSION_COOKIE_SECURE = (ENVIRONMENT == "production")
+
+
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
@@ -92,9 +113,8 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Ensure the production backend domain is trusted (useful when running on Railway)
 if ENVIRONMENT == "production":
-    prod_backend = "https://stm-food-backend-production.up.railway.app"
-    if prod_backend not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(prod_backend)
+    # Railway terminates HTTPS at the proxy, so don't force redirect here.
+    SECURE_SSL_REDIRECT = False
 
 
 
