@@ -68,11 +68,20 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.somtammarket.com",
     "https://food.somtammarket.com",
     "https://nokinhouse.tech",
-    "https://stm-portal-frontend.vercel.app"  ,
-
+    "https://stm-portal-frontend.vercel.app",
 ]
-CSRF_COOKIE_DOMAIN = ".somtammarket.com"
-SESSION_COOKIE_DOMAIN = ".somtammarket.com"
+
+# Cookie domain: only set when hosting under the official somtammarket domain.
+# For ephemeral hosts like Railway (stm-food-backend-production.up.railway.app),
+# we should not force a different cookie domain, otherwise session/CSRF cookies
+# will not be sent and admin login will fail.
+COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "")
+if COOKIE_DOMAIN:
+    CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
+    SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
+else:
+    CSRF_COOKIE_DOMAIN = None
+    SESSION_COOKIE_DOMAIN = None
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
@@ -80,6 +89,12 @@ CSRF_COOKIE_SAMESITE = "None"
 SESSION_COOKIE_SAMESITE = "None"
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Ensure the production backend domain is trusted (useful when running on Railway)
+if ENVIRONMENT == "production":
+    prod_backend = "https://stm-food-backend-production.up.railway.app"
+    if prod_backend not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(prod_backend)
 
 
 
@@ -168,6 +183,11 @@ DATABASES = {
 # Custom user model
 AUTH_USER_MODEL = 'thefood.User'
 
+# Ensure Django admin and session-based auth continue to work alongside any API/backends.
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    # Add any custom backends for API auth below (keep them after ModelBackend)
+]
 
 # -------------------------------------------------
 # Password validation
