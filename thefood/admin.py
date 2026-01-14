@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 # Register your models here.
 from .models import (
-    User, Customer, PartnerStore, Category, Brand, Product,Cart, CartItem, Order,OrderItem,Recipe,Blog,NewsletterSignup
+    User, Customer, PartnerStore, StoreLocation, Category, Brand, Product,Cart, CartItem, Order,OrderItem,Recipe,Blog,NewsletterSignup
 )
 # Extend Django's UserAdmin to show custom fields
 
@@ -101,6 +101,7 @@ admin.site = CustomAdminSite(name='custom_admin')
 admin.site.register(User, UserAdmin)
 admin.site.register(Customer)
 admin.site.register(PartnerStore)
+admin.site.register(StoreLocation)
 admin.site.register(Category)
 admin.site.register(Brand)
 admin.site.register(Product)

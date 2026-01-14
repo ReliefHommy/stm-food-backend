@@ -9,8 +9,8 @@ from rest_framework import viewsets, generics,permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Product, Order, Category
-from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer
+from .models import Product, Order, Category, StoreLocation
+from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer
 
 
 #download_receipt
@@ -105,6 +105,14 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
     lookup_field = 'slug'
+
+
+class StoreLocationViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only API for store locations."""
+    queryset = StoreLocation.objects.select_related('partner_store').all()
+    serializer_class = StoreLocationSerializer
+    permission_classes = [permissions.AllowAny]
+    # default lookup is pk
 
 
 #VendorProductListCreateView

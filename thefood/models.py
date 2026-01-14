@@ -87,6 +87,22 @@ class PartnerStore(models.Model):
         return self.store_name
 
 
+class StoreLocation(models.Model):
+    """Optional store location tied to a PartnerStore. Supports location-based search features."""
+    partner_store = models.OneToOneField('PartnerStore', on_delete=models.CASCADE, related_name='location', null=True, blank=True)
+    address = models.TextField(blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
+    def __str__(self):
+        if self.partner_store:
+            return f"{self.partner_store.store_name} Location"
+        return self.address[:50] if self.address else "Store Location"
+
+
 class Category(models.Model):
     name = models.CharField(max_length=100)
     icon = models.CharField(max_length=100, blank=True)
@@ -117,6 +133,8 @@ class Product(models.Model):
     brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     partner_store = models.ForeignKey(PartnerStore, on_delete=models.CASCADE)
+    # Optional denormalized link to a StoreLocation to support location-based queries
+    store_location = models.ForeignKey('StoreLocation', on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -128,6 +146,9 @@ class Product(models.Model):
                 i += 1
                 cand = f'{base}-{i}'
             self.slug = cand
+        # Auto-assign store_location from partner_store if missing
+        if not self.store_location and getattr(self, 'partner_store', None) and hasattr(self.partner_store, 'location') and self.partner_store.location:
+            self.store_location = self.partner_store.location
         super().save(*args, **kwargs)
 
 

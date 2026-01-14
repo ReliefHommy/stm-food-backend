@@ -22,6 +22,31 @@ class CategorySerializer(serializers.ModelSerializer):
             'icon': {'required': False, 'allow_blank': True},
         }
 
+
+from .models import StoreLocation
+
+class StoreLocationSerializer(serializers.ModelSerializer):
+    partner_store_name = serializers.CharField(source='partner_store.store_name', read_only=True)
+
+    class Meta:
+        model = StoreLocation
+        fields = ['id', 'partner_store', 'partner_store_name', 'address', 'city', 'postal_code', 'country', 'latitude', 'longitude']
+        read_only_fields = ['id', 'partner_store', 'partner_store_name']
+
+# Include store_location as nested read-only in product responses
+class ProductSerializer(serializers.ModelSerializer):
+    store_location = StoreLocationSerializer(read_only=True)
+
+    class Meta:
+        model = Product
+        #fields = '__all__'
+        fields = ['id', 'title', 'slug','description', 'price', 'stock_quantity', 'image', 'partner_store', 'store_location', 'created_at']
+        read_only_fields = ['id', 'partner_store', 'created_at', 'slug', 'store_location']
+
+        extra_kwargs = {
+            'image': {'required': False, 'allow_null': True},
+        }
+
         
 
 # Nested OrderItem serializer

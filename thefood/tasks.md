@@ -13,3 +13,10 @@
 #In the main urls.py, include these under the api/ path.
 
 #Stop after generating the code for these three files.
+
+# In the context of a code-focused agent, here is the re-written prompt:
+
+**"In the Django file `thefood/models.py`, update the `PartnerStore` model to include a `StoreLocation` 
+(field or foreign key) and establish a relationship that links it to `Product` models to enable location-based search features."**
+
+
