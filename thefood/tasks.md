@@ -54,3 +54,19 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     # keep custom backend(s) below if used for API
 
+TASK: Fix the '403 Forbidden' error encountered when trying to log in to the Django Admin interface in production.
+
+CONTEXT:
+*   Project: STM Marketplace (Django Backend).
+*   Admin URL with Error: https://stm-food-backend-production.up.railway.app/admin/login/?next=/admin/
+*   Environment: Django deployed on Railway. The 403 error is typically a security misconfiguration on the backend when deployed.
+
+INSTRUCTION:
+Generate the Python code required to safely update the `settings.py` file to allow access to the Django Admin at the specified production URL.
+
+ACTION REQUIRED:
+1.  Update the **ALLOWED_HOSTS** setting to include the production domain name.
+2.  Update the **CSRF_TRUSTED_ORIGINS** setting to include the production host's protocol and domain to allow POST requests (like the login form) from the expected origin.
+
+Expected Output: A Python snippet showing the suggested values for `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in `settings.py`.
+

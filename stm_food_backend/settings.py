@@ -68,6 +68,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://food.somtammarket.com",
     "https://nokinhouse.tech",
     "https://stm-portal-frontend.vercel.app",
+    "https://stm-food-backend-production.up.railway.app",  # Add Railway production origin
 ]
 
 if ENVIRONMENT == "production":
