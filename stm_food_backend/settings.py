@@ -38,7 +38,8 @@ ALLOWED_HOSTS = [
     "api.somtammarket.com",
     "localhost",
     "127.0.0.1",
-    "stm-food-backend-production.up.railway.app",  # ← Railway auto domain
+    "https://api.somtammarket.com",
+ 
 ]
 
 # CORS (frontend -> backend API)
@@ -68,13 +69,13 @@ CSRF_TRUSTED_ORIGINS = [
     "https://food.somtammarket.com",
     "https://nokinhouse.tech",
     "https://stm-portal-frontend.vercel.app",
-    "https://stm-food-backend-production.up.railway.app",  # Add Railway production origin
+    "https://api.somtammarket.com",
 ]
 
 if ENVIRONMENT == "production":
     # Ensure Railway origin is trusted for admin POST
     CSRF_TRUSTED_ORIGINS += [
-        "https://stm-food-backend-production.up.railway.app",
+        "https://api.somtammarket.com",
     ] 
 
 # -------------------------------------------------
