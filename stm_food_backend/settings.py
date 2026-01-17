@@ -35,10 +35,10 @@ DEBUG = ENVIRONMENT != "production"
 
 
 ALLOWED_HOSTS = [
-    "api.somtammarket.com",
+
     "localhost",
     "127.0.0.1",
-    "https://api.somtammarket.com",
+    "api.somtammarket.com",
  
 ]
 
@@ -48,6 +48,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://somtammarket.com",
     "https://www.somtammarket.com",
     "https://food.somtammarket.com",
+    "https://admin.somtammarket.com",
     "https://nokinhouse.tech",
     "https://stm-portal-frontend.vercel.app",
 ]
@@ -66,6 +67,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "https://somtammarket.com",
     "https://www.somtammarket.com",
+    "https://admin.somtammarket.com",
     "https://food.somtammarket.com",
     "https://nokinhouse.tech",
     "https://stm-portal-frontend.vercel.app",
