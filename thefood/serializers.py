@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from django.db import Users
+from django.conf import settings
 from .models import Order, OrderItem, Product, Category
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -103,6 +105,13 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             # Create order items
         for item_data in items_data:
             OrderItem.objects.create(order=order,**item_data)
-        return order      
+        return order
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Users
+        fields = ['id', 'email', 'first_name', 'last_name']
+
+      
 
 
