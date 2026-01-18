@@ -10,7 +10,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Product, Order, Category, StoreLocation
-from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer, UserSerializer
+from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer
 
 
 #download_receipt
@@ -196,11 +196,5 @@ class OrderDetailAPIView(APIView):
             return Response({'detail': 'Order not found'},status=404)
         
 
-class UserProfileAPIView(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        user = request.user
-        serializer = UserSerializer(user)
-        return Response(serializer.data)
         
