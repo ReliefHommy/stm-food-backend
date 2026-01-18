@@ -10,7 +10,7 @@ router.register(r'products', ProductViewSet, basename='product')
 router.register(r'orders', OrderViewSet, basename='orders')
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'store-locations', StoreLocationViewSet, basename='storelocation')
-router.register(r'profile', UserProfileAPIView, basename='userprofile')
+
 
 
 
@@ -24,6 +24,6 @@ urlpatterns = [
     path('orders/create', OrderCreateAPIView.as_view(), name='order-create'),
     path('my-orders/', OrderListAPIView.as_view(), name='my-order-list'),
     path('my-orders/<int:pk>/', OrderDetailAPIView.as_view(), name='my-order-detail'),
-    path('profile/', UserProfileAPIView.as_view(), name='user-profile'),
+    
  
 ]
