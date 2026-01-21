@@ -105,11 +105,34 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             OrderItem.objects.create(order=order,**item_data)
         return order
     
-class UserProfileSerializer(serializers.ModelSerializer):
+
+
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'user', 'bio', 'avatar', 'address', 'email']
-        read_only_fields = ['id', 'user']
+        fields = ["id", "email", "is_customer", "is_partner"]
+        read_only_fields = ["id"]
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    # expose user info as simple fields for your table
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = [
+            "id",
+            "user_id",
+            "email",
+            "is_vendor",
+            "is_customer",
+            "phone",
+            "avatar",
+            "address",
+        ]
+        read_only_fields = ["id", "user_id", "email"]
+
+
 
 
 

@@ -59,7 +59,7 @@ class UserProfile(models.Model):
     address = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.user.email} Profile"
+        return f"{self.user} Profile"
 
 
 

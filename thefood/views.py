@@ -58,15 +58,8 @@ def download_receipt(request, order_id):
     buffer.seek(0)
     return FileResponse(buffer, as_attachment=True, filename=f'receipt_order_{order.id}.pdf')
 
-# thefood/views.py
 
 
-
-
-# thefood/views.py
-from rest_framework import generics, permissions
-from .models import UserProfile
-from .serializers import UserProfileSerializer
 
 class UserProfileListView(generics.ListAPIView):
     serializer_class = UserProfileSerializer
