@@ -34,6 +34,7 @@ class CustomUserManager(UserManager):
             password=password,
             **extra_fields,
         )
+    
 
 # Extend Django's built-in user model
 class User(AbstractUser):

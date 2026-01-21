@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Order, OrderItem, Product, Category
+from .models import Order, OrderItem, Product, Category,UserProfile,User
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,6 +104,12 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         for item_data in items_data:
             OrderItem.objects.create(order=order,**item_data)
         return order
+    
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'user', 'bio', 'avatar', 'address', 'email']
+        read_only_fields = ['id', 'user']
 
 
 

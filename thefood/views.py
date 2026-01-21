@@ -9,8 +9,11 @@ from rest_framework import viewsets, generics,permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Product, Order, Category, StoreLocation
-from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer
+from .models import Product, Order, Category, StoreLocation, UserProfile
+from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer,UserProfileSerializer
+
+
+
 
 
 #download_receipt
@@ -54,6 +57,29 @@ def download_receipt(request, order_id):
 
     buffer.seek(0)
     return FileResponse(buffer, as_attachment=True, filename=f'receipt_order_{order.id}.pdf')
+
+# thefood/views.py
+
+
+
+
+# thefood/views.py
+from rest_framework import generics, permissions
+from .models import UserProfile
+from .serializers import UserProfileSerializer
+
+class UserProfileListView(generics.ListAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAdminUser]  # staff-only (includes superuser)
+
+    def get_queryset(self):
+        return UserProfile.objects.select_related("user").all().order_by("-id")
+
+
+
+
+
+
 
 
 #ProductViewSet

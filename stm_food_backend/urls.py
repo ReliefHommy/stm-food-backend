@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 
 from .views import MyProfileView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import MyProfileView
+
 
 
 
@@ -13,10 +13,15 @@ from .views import MyProfileView
 urlpatterns = [
 
     path('admin/', admin.site.urls),
+  
+
     # Auth
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/me/', MyProfileView.as_view(), name='my-profile'),
+
+     # ✅ Admin metrics endpoints (NEW)
+    path("api/admin/", include("stm_food_backend.admin_urls")),
 
     # App Apis
     path('api/food/', include("thefood.urls")),
