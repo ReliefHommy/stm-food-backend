@@ -110,13 +110,15 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "email", "is_customer", "is_partner"]
+        fields = ["id", "email", "is_customer", "is_vendor"]
         read_only_fields = ["id"]
 
 class UserProfileSerializer(serializers.ModelSerializer):
     # expose user info as simple fields for your table
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     email = serializers.EmailField(source="user.email", read_only=True)
+    is_vendor = serializers.BooleanField(source="user.is_partner", read_only=True)
+    is_customer = serializers.BooleanField(source="user.is_customer", read_only=True)
 
     class Meta:
         model = UserProfile
@@ -124,7 +126,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "id",
             "user_id",
             "email",
-            "is_partner",
+            "is_vendor",
             "is_customer",
             "phone",
             "avatar",
