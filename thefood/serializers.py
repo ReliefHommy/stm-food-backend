@@ -124,7 +124,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "id",
             "user_id",
             "email",
-            "is_vendor",
+            "is_partner",
             "is_customer",
             "phone",
             "avatar",
