@@ -79,6 +79,7 @@ class Customer(models.Model):
 class PartnerStore(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE,related_name='partner_store')
     store_name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True, blank=True) 
     description = models.TextField(blank=True)
     logo = models.URLField(max_length=500, null=True, blank=True)
     contact_email = models.EmailField()
