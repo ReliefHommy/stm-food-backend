@@ -39,7 +39,7 @@ class CartAdmin(admin.ModelAdmin):
 #ProductAdmin
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('title','slug', 'price', 'is_available', 'stock_quantity', 'brand', 'category','partner_store', 'created_at','image')
-    list_filter = ('brand', 'category', 'is_available')
+    list_filter = ('partner_store','brand', 'category', 'is_available')
     search_fields = ('title', 'description')
     prepopulated_fields = {'slug': ('title',)}  # ✅ auto fills slug based on title
 
