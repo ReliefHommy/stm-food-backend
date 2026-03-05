@@ -38,7 +38,7 @@ class CartAdmin(admin.ModelAdmin):
     inlines = [CartItemInline]
 #ProductAdmin
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('title','slug', 'price', 'is_available', 'stock_quantity', 'brand', 'category','partner_store', 'created_at','image')
+    list_display = ('id','title','slug', 'price', 'is_available', 'stock_quantity', 'brand', 'category','partner_store', 'created_at','image')
     list_filter = ('partner_store','brand', 'category', 'is_available')
     search_fields = ('title', 'description')
     prepopulated_fields = {'slug': ('title',)}  # ✅ auto fills slug based on title
@@ -100,11 +100,11 @@ admin.site = CustomAdminSite(name='custom_admin')
 
 admin.site.register(User, UserAdmin)
 admin.site.register(Customer)
-admin.site.register(PartnerStore)
+admin.site.register(PartnerStore,PartnerStoreAdmin)
 admin.site.register(StoreLocation)
 admin.site.register(Category)
 admin.site.register(Brand)
-admin.site.register(Product)
+admin.site.register(Product,ProductAdmin)
 admin.site.register(Cart)
 admin.site.register(CartItem)
 admin.site.register(Order)

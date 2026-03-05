@@ -140,20 +140,41 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        if not self.slug:
-            base = slugify(self.title)
+        # ✅ regenerate slug if new OR title changed
+        regenerate_slug = False
+
+        if self.pk:
+            old_title = Product.objects.filter(pk=self.pk).values_list("title", flat=True).first()
+            if old_title != self.title:
+                regenerate_slug = True
+        else:
+            regenerate_slug = True
+
+        if regenerate_slug:
+            base = slugify(self.title) or "product"
             cand = base
             i = 1
-            while Product.objects.filter(slug=cand).exists():
+
+            qs = Product.objects.all()
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)  # ✅ don't conflict with itself
+
+            while qs.filter(slug=cand).exists():
                 i += 1
-                cand = f'{base}-{i}'
+                cand = f"{base}-{i}"
+
             self.slug = cand
+
         # Auto-assign store_location from partner_store if missing
-        if not self.store_location and getattr(self, 'partner_store', None) and hasattr(self.partner_store, 'location') and self.partner_store.location:
+        if (
+            not self.store_location
+            and getattr(self, 'partner_store', None)
+            and hasattr(self.partner_store, 'location')
+            and self.partner_store.location
+        ):
             self.store_location = self.partner_store.location
+
         super().save(*args, **kwargs)
-
-
 
     def __str__(self):
         return self.title

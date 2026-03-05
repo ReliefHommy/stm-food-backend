@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Order, OrderItem, Product, Category,UserProfile,User
+from .models import Order, OrderItem, Product, Category,UserProfile,User,PartnerStore
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -134,6 +134,34 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "user_id", "email"]
 
+
+# food/serializers.py
+from rest_framework import serializers
+from .models import PartnerStore
+
+class StoreProfileSerializer(serializers.ModelSerializer):
+    # user info as flat fields
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    is_vendor = serializers.BooleanField(source="user.is_partner", read_only=True)
+    is_customer = serializers.BooleanField(source="user.is_customer", read_only=True)
+
+    class Meta:
+        model = PartnerStore
+        fields = [
+            "id",
+            "user_id",
+            "email",
+            "is_vendor",
+            "is_customer",
+            "store_name",
+            "slug",
+            "description",
+            "logo",
+            "contact_email",
+            "website",
+        ]
+        read_only_fields = ["id", "user_id", "email", "slug"]
 
 
 

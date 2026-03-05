@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from thefood.views import OrderListAPIView
-from .views import ProductViewSet, OrderViewSet,OrderCreateAPIView,OrderListAPIView,OrderDetailAPIView,VendorProductListCreateView,CategoryViewSet,StoreLocationViewSet,UserProfileListView
+from .views import ProductViewSet, OrderViewSet,OrderCreateAPIView,OrderListAPIView,OrderDetailAPIView,VendorProductListCreateView,CategoryViewSet,StoreLocationViewSet,UserProfileListView,StoreProfileListView
 
 
 
@@ -27,6 +27,7 @@ urlpatterns = [
     path('my-orders/<int:pk>/', OrderDetailAPIView.as_view(), name='my-order-detail'),
 
     path("userprofiles/", UserProfileListView.as_view(), name="userprofile-list"),
+    path("storeprofiles/", StoreProfileListView.as_view(), name="storeprofile-list"),
 ]
     
  

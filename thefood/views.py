@@ -9,8 +9,8 @@ from rest_framework import viewsets, generics,permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Product, Order, Category, StoreLocation, UserProfile
-from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer,UserProfileSerializer
+from .models import Product, Order, Category, StoreLocation, UserProfile,PartnerStore
+from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer,UserProfileSerializer,StoreProfileSerializer
 
 
 
@@ -60,13 +60,22 @@ def download_receipt(request, order_id):
 
 
 
-
+#UserProfileListView
 class UserProfileListView(generics.ListAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAdminUser]  # staff-only (includes superuser)
 
     def get_queryset(self):
         return UserProfile.objects.select_related("user").all().order_by("-id")
+    
+
+
+class StoreProfileListView(generics.ListAPIView):
+    serializer_class = StoreProfileSerializer
+    permission_classes = [permissions.IsAdminUser]  # staff/superuser only
+
+    def get_queryset(self):
+        return PartnerStore.objects.select_related("user").all().order_by("-id")
 
 
 
