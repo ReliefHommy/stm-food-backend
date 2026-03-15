@@ -15,15 +15,35 @@ from .ai import gen_auto_post, gen_review_reply, gen_campaign
 
 
 class CampaignViewSet(viewsets.ModelViewSet):
+    
     serializer_class = CampaignSerializer
     queryset = Campaign.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Campaign.objects.filter(created_by=self.request.user).order_by('-created_at')
+        user = self.request.user
+        if user.is_authenticated and getattr(user, 'is_partner', False):
+            return Campaign.objects.filter(created_by=self.request.user).order_by('-created_at')
+        return Campaign.objects.all()  # non-partners see nothing
+    
+    def create(self, request, *args, **kwargs):
+        print("📦 Incoming data:", request.data)
+        print("📷 Incoming FILES:", request.FILES)
+        return super().create(request, *args, **kwargs)
+
     
     def perform_create(self, serializer):
+        user = self.request.user
+        if not getattr(user, 'is_partner', False):
+            raise permissions.PermissionDenied("Not authorized to create campaigns")
         serializer.save()  # created_by set in serializer.create()
+
+    def perform_update(self, serializer):
+        obj = self.get_object()
+        user = self.request.user
+        if user.is_partner and getattr(obj.created_by, "id", None) != user.id:
+            raise permissions.PermissionDenied("Not authorized to edit this campaign")
+        serializer.save()
 
 
 
@@ -50,6 +70,8 @@ class CampaignPostViewSet(viewsets.ReadOnlyModelViewSet):
 class AutoPostViewSet(viewsets.ModelViewSet):
     queryset = AutoPost.objects.all().order_by("-created_at")
     serializer_class = AutoPostSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
