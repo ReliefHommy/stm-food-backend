@@ -36,11 +36,12 @@ class StoreLocationSerializer(serializers.ModelSerializer):
 # Include store_location as nested read-only in product responses
 class ProductSerializer(serializers.ModelSerializer):
     store_location = StoreLocationSerializer(read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True)
 
     class Meta:
         model = Product
         #fields = '__all__'
-        fields = ['id', 'title', 'slug','subtitle','description','category', 'price', 'stock_quantity', 'image', 'partner_store', 'store_location', 'created_at']
+        fields = ['id', 'title', 'slug','subtitle','description','category', 'category_name','price', 'stock_quantity', 'image', 'partner_store', 'store_location', 'created_at']
         read_only_fields = ['id', 'partner_store', 'created_at', 'slug', 'store_location']
 
         extra_kwargs = {
