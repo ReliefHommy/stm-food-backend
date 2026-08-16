@@ -35,11 +35,10 @@ DEBUG = ENVIRONMENT != "production"
 
 
 ALLOWED_HOSTS = [
-
     "localhost",
     "127.0.0.1",
     "api.somtammarket.com",
- 
+    ".up.railway.app",  # leading dot matches any subdomain, incl. Railway's default URL
 ]
 
 # CORS (frontend -> backend API)
@@ -99,28 +98,20 @@ SESSION_COOKIE_DOMAIN = COOKIE_DOMAIN
 # Cookies for admin + session
 # -------------------------------------------------
 # Admin login uses CSRF + session cookies. Keep them consistent.
-# If SameSite=None, cookies MUST be Secure=True in modern browsers.
-CSRF_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SAMESITE = "Lax"
-
-CSRF_COOKIE_SECURE = (ENVIRONMENT == "production")
-SESSION_COOKIE_SECURE = (ENVIRONMENT == "production")
-
-
-
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SAMESITE = "None"
-
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
-# Ensure the production backend domain is trusted (useful when running on Railway)
+# Cross-subdomain cookies (admin.somtammarket.com, food.somtammarket.com,
+# somtammarket.com -> api.somtammarket.com) require SameSite=None + Secure=True,
+# which only works over HTTPS. Local dev runs over plain http://localhost, so
+# use relaxed settings there instead.
 if ENVIRONMENT == "production":
-    # Railway terminates HTTPS at the proxy, so don't force redirect here.
-    SECURE_SSL_REDIRECT = False
-
-
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SAMESITE = "None"
+else:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
 
 
 
@@ -275,10 +266,7 @@ if not DEBUG:
     # Railway already serves your app over HTTPS.
     SECURE_SSL_REDIRECT = False
 
-    # Turn off strict cookie+HSTS for now until everything is stable
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
-
+    # Turn off strict HSTS for now until everything is stable
     SECURE_HSTS_SECONDS = 0
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
