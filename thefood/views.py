@@ -211,17 +211,14 @@ class OrderDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        user = request.user
+        # TODO: real vendor-scoped order visibility (Order has no `store`
+        # field yet) is a future need, not solved here.
         try:
-            if user.is_partner and hasattr(user,'partner_store'):
-                order = Order.objects.get(pk=pk, store=user.partner_store)
-            else:
-                order = Order.objects.get(pk=pk, user=user)
-
+            order = Order.objects.get(pk=pk, user=request.user)
             serializer = OrderSerializer(order)
             return Response(serializer.data)
         except Order.DoesNotExist:
-            return Response({'detail': 'Order not found'},status=404)
+            return Response({'detail': 'Order not found'}, status=404)
         
 
 
