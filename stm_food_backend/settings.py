@@ -13,11 +13,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load .env from project root
 load_dotenv(BASE_DIR / ".env")
 
-# Security
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'fallback-secret-for-development')
-
-
-
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
@@ -25,6 +20,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # In production, set ENVIRONMENT=production in your host.
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 DEBUG = ENVIRONMENT != "production"
+
+# Security
+if ENVIRONMENT == "production":
+    SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]  # fail loudly if missing in production, don't silently fall back to a weak default
+else:
+    SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'fallback-secret-for-development')
 
 
 # -------------------------------------------------
