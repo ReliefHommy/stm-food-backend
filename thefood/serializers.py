@@ -41,7 +41,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         #fields = '__all__'
-        fields = ['id', 'title', 'slug','subtitle','description','category', 'category_name','price', 'stock_quantity', 'image', 'partner_store', 'store_location', 'created_at']
+        fields = ['id', 'title', 'slug','subtitle','description','category', 'category_name','price', 'stock_quantity', 'image', 'is_subscription_eligible', 'partner_store', 'store_location', 'created_at']
         read_only_fields = ['id', 'partner_store', 'created_at', 'slug', 'store_location']
 
         extra_kwargs = {
