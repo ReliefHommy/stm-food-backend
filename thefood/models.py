@@ -132,6 +132,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock_quantity = models.IntegerField(blank=True, null=True)
     is_available = models.BooleanField(default=True)
+    is_subscription_eligible = models.BooleanField(default=True)
     brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
     partner_store = models.ForeignKey(PartnerStore, on_delete=models.CASCADE)
