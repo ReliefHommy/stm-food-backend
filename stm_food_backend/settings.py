@@ -126,6 +126,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'thefood',
+    'subscriptions',
     'orders',
     'studio',
     'rest_framework',
