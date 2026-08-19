@@ -25,7 +25,8 @@ urlpatterns = [
 
     # App Apis
     path('api/food/', include("thefood.urls")),
-    path("api/studio/", include("studio.urls")),  
+    path("api/studio/", include("studio.urls")),
+    path("api/subscriptions/", include("subscriptions.urls")),
     
     
 ]+static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
