@@ -146,16 +146,29 @@ class SubscriptionStartView(APIView):
                     address=stripe_address,
                 )
 
+            # Subscription items' price_data only accepts an existing Product ID
+            # (unlike Checkout Session / Invoice Item price_data, which allow
+            # inline product_data), so the box Product must be created first.
+            # Cached per partner store so repeated subscriptions reuse one
+            # Product instead of littering the Stripe dashboard with dupes.
+            if partner_store.stripe_subscription_product_id:
+                box_product_id = partner_store.stripe_subscription_product_id
+            else:
+                box_product = stripe.Product.create(
+                    name=f'{partner_store.store_name} Subscription Box',
+                    tax_code=FOOD_TAX_CODE,
+                )
+                box_product_id = box_product.id
+                partner_store.stripe_subscription_product_id = box_product_id
+                partner_store.save(update_fields=['stripe_subscription_product_id'])
+
             stripe_subscription = stripe.Subscription.create(
                 customer=stripe_customer.stripe_customer_id,
                 items=[
                     {
                         'price_data': {
                             'currency': 'sek',
-                            'product_data': {
-                                'name': f'{partner_store.store_name} Subscription Box',
-                                'tax_code': FOOD_TAX_CODE,
-                            },
+                            'product': box_product_id,
                             'unit_amount': box_total_cents,
                             'recurring': RECURRING_BY_FREQUENCY[frequency],
                         },
@@ -164,8 +177,9 @@ class SubscriptionStartView(APIView):
                     {'price': shipping_price_id, 'quantity': 1},
                 ],
                 payment_behavior='default_incomplete',
+                payment_settings={'save_default_payment_method': 'on_subscription'},
                 automatic_tax={'enabled': True},
-                expand=['latest_invoice.payment_intent'],
+                expand=['latest_invoice.confirmation_secret', 'pending_setup_intent'],
                 metadata={
                     'django_user_id': str(request.user.id),
                     'partner_store_id': str(partner_store.id),
@@ -177,16 +191,32 @@ class SubscriptionStartView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        latest_invoice = stripe_subscription.get('latest_invoice')
-        payment_intent = latest_invoice.get('payment_intent') if latest_invoice else None
-        client_secret = payment_intent.get('client_secret') if payment_intent else None
+        # stripe-python 15+ typed resources aren't dicts: .get() is disabled in
+        # favor of attribute access (still supports [] item access, used below).
+        # Invoice.payment_intent no longer exists (removed post-"Basil"); the
+        # client_secret now comes from either pending_setup_intent (no payment
+        # due yet, e.g. $0 first invoice) or latest_invoice.confirmation_secret
+        # (payment due now) — the frontend must call stripe.confirmSetup vs
+        # stripe.confirmPayment accordingly, hence the paired `type` field.
+        pending_setup_intent = getattr(stripe_subscription, 'pending_setup_intent', None)
+        if pending_setup_intent is not None:
+            client_secret = getattr(pending_setup_intent, 'client_secret', None)
+            payment_type = 'setup'
+        else:
+            latest_invoice = getattr(stripe_subscription, 'latest_invoice', None)
+            confirmation_secret = getattr(latest_invoice, 'confirmation_secret', None) if latest_invoice else None
+            client_secret = getattr(confirmation_secret, 'client_secret', None) if confirmation_secret else None
+            payment_type = 'payment'
 
         subscription_items = stripe_subscription['items']['data']
         shipping_item = next(i for i in subscription_items if i['price']['id'] == shipping_price_id)
         box_item = next(i for i in subscription_items if i['id'] != shipping_item['id'])
 
+        # current_period_end moved off the top-level Subscription and onto each
+        # SubscriptionItem in the Basil API update (2025-03-31); both items
+        # share one billing schedule, so either item's value works here.
         current_period_end = None
-        period_end_ts = stripe_subscription.get('current_period_end')
+        period_end_ts = box_item['current_period_end']
         if period_end_ts:
             current_period_end = datetime.fromtimestamp(period_end_ts, tz=timezone.utc)
 
@@ -221,6 +251,7 @@ class SubscriptionStartView(APIView):
                 'stripe_subscription_id': stripe_subscription.id,
                 'status': django_subscription.status,
                 'client_secret': client_secret,
+                'type': payment_type,
             },
             status=status.HTTP_201_CREATED,
         )
