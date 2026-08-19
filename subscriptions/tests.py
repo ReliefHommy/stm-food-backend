@@ -19,13 +19,13 @@ class FakeStripeObject(dict):
             raise AttributeError(name)
 
 
-def fake_subscription_response(sub_id='sub_test123'):
+def fake_subscription_response(sub_id='sub_test123', shipping_price_id='price_weekly_dummy'):
     return FakeStripeObject({
         'id': sub_id,
         'items': {
             'data': [
-                {'id': 'si_box_test'},
-                {'id': 'si_shipping_test'},
+                {'id': 'si_box_test', 'price': {'id': 'price_data_generated'}},
+                {'id': 'si_shipping_test', 'price': {'id': shipping_price_id}},
             ]
         },
         'latest_invoice': {
@@ -102,7 +102,11 @@ class SubscriptionStartViewTests(TestCase):
 
         # box total = 2*12.50 + 1*15.00 = 40.00 -> 4000 cents
         _, kwargs = mock_subscription_create.call_args
-        self.assertEqual(kwargs['items'][0]['price_data']['unit_amount'], 4000)
+        box_price_data = kwargs['items'][0]['price_data']
+        self.assertEqual(box_price_data['unit_amount'], 4000)
+        self.assertEqual(box_price_data['currency'], 'sek')
+        self.assertEqual(box_price_data['recurring'], {'interval': 'week', 'interval_count': 1})
+        self.assertEqual(box_price_data['product_data']['tax_code'], 'txcd_40040000')
         self.assertEqual(kwargs['items'][1]['price'], 'price_weekly_dummy')
         self.assertEqual(kwargs['payment_behavior'], 'default_incomplete')
         self.assertTrue(kwargs['automatic_tax']['enabled'])
@@ -113,7 +117,9 @@ class SubscriptionStartViewTests(TestCase):
         self, mock_customer_modify, mock_subscription_create
     ):
         StripeCustomer.objects.create(user=self.user, stripe_customer_id='cus_existing')
-        mock_subscription_create.return_value = fake_subscription_response('sub_biweekly_1')
+        mock_subscription_create.return_value = fake_subscription_response(
+            'sub_biweekly_1', shipping_price_id='price_biweekly_dummy'
+        )
 
         response = self.client.post('/api/subscriptions/start/', {
             'frequency': 'biweekly',
@@ -127,6 +133,54 @@ class SubscriptionStartViewTests(TestCase):
         _, kwargs = mock_subscription_create.call_args
         self.assertEqual(kwargs['customer'], 'cus_existing')
         self.assertEqual(kwargs['items'][1]['price'], 'price_biweekly_dummy')
+        self.assertEqual(
+            kwargs['items'][0]['price_data']['recurring'], {'interval': 'week', 'interval_count': 2}
+        )
+
+    @patch('subscriptions.views.stripe.Subscription.create')
+    @patch('subscriptions.views.stripe.Customer.create')
+    def test_monthly_recurring_interval_matches_frequency(self, mock_customer_create, mock_subscription_create):
+        mock_customer_create.return_value = MagicMock(id='cus_test123')
+        mock_subscription_create.return_value = fake_subscription_response(
+            'sub_monthly_1', shipping_price_id='price_monthly_dummy'
+        )
+
+        response = self.client.post('/api/subscriptions/start/', {
+            'frequency': 'monthly',
+            'items': [{'product_id': self.product_a.id, 'quantity': 1}],
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201, response.data)
+        _, kwargs = mock_subscription_create.call_args
+        self.assertEqual(
+            kwargs['items'][0]['price_data']['recurring'], {'interval': 'month', 'interval_count': 1}
+        )
+
+    @patch('subscriptions.views.stripe.Subscription.create')
+    @patch('subscriptions.views.stripe.Customer.create')
+    def test_rejects_when_active_subscription_already_exists(self, mock_customer_create, mock_subscription_create):
+        Subscription.objects.create(
+            user=self.user,
+            partner_store=self.store,
+            frequency='weekly',
+            status='active',
+            full_name='Jane Shopper',
+            phone='555-1234',
+            shipping_address='123 Main St',
+            city='Austin',
+            postal_code='73301',
+            country='US',
+        )
+
+        response = self.client.post('/api/subscriptions/start/', {
+            'frequency': 'weekly',
+            'items': [{'product_id': self.product_a.id, 'quantity': 1}],
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('already have an active subscription', response.data['detail'])
+        mock_subscription_create.assert_not_called()
+        self.assertEqual(Subscription.objects.count(), 1)
 
     def test_rejects_mixed_partner_stores(self):
         response = self.client.post('/api/subscriptions/start/', {
@@ -149,3 +203,16 @@ class SubscriptionStartViewTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn('not eligible', response.data['detail'])
+
+    def test_rejects_duplicate_product_ids(self):
+        response = self.client.post('/api/subscriptions/start/', {
+            'frequency': 'monthly',
+            'items': [
+                {'product_id': self.product_a.id, 'quantity': 1},
+                {'product_id': self.product_a.id, 'quantity': 2},
+            ],
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('items', response.data)
+        self.assertFalse(Subscription.objects.exists())

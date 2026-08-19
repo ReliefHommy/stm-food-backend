@@ -20,6 +20,19 @@ SHIPPING_PRICE_SETTINGS = {
     'monthly': 'STRIPE_SHIPPING_PRICE_ID_MONTHLY',
 }
 
+# Must match the interval/interval_count of the corresponding shipping price
+# in Stripe, since all items on a Subscription share one billing schedule.
+RECURRING_BY_FREQUENCY = {
+    'weekly': {'interval': 'week', 'interval_count': 1},
+    'biweekly': {'interval': 'week', 'interval_count': 2},
+    'monthly': {'interval': 'month', 'interval_count': 1},
+}
+
+# https://docs.stripe.com/tax/tax-codes.md — "Food for non-immediate consumption"
+FOOD_TAX_CODE = 'txcd_40040000'
+
+ACTIVE_SUBSCRIPTION_STATUSES = ('incomplete', 'active', 'past_due', 'paused')
+
 
 def _next_delivery_date(frequency, from_date=None):
     from_date = from_date or date.today()
@@ -85,10 +98,18 @@ class SubscriptionStartView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if Subscription.objects.filter(
+            user=request.user, status__in=ACTIVE_SUBSCRIPTION_STATUSES
+        ).exists():
+            return Response(
+                {'detail': "You already have an active subscription."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         box_total = sum(
             products[item['product_id']].price * item['quantity'] for item in requested_items
         )
-        box_total_cents = int(box_total * 100)
+        box_total_cents = round(box_total * 100)
 
         stripe.api_key = settings.STRIPE_SECRET_KEY
         stripe_address = {
@@ -130,9 +151,13 @@ class SubscriptionStartView(APIView):
                 items=[
                     {
                         'price_data': {
-                            'currency': 'usd',
-                            'product_data': {'name': f'{partner_store.store_name} Subscription Box'},
+                            'currency': 'sek',
+                            'product_data': {
+                                'name': f'{partner_store.store_name} Subscription Box',
+                                'tax_code': FOOD_TAX_CODE,
+                            },
                             'unit_amount': box_total_cents,
+                            'recurring': RECURRING_BY_FREQUENCY[frequency],
                         },
                         'quantity': 1,
                     },
@@ -156,7 +181,9 @@ class SubscriptionStartView(APIView):
         payment_intent = latest_invoice.get('payment_intent') if latest_invoice else None
         client_secret = payment_intent.get('client_secret') if payment_intent else None
 
-        box_item, shipping_item = stripe_subscription['items']['data'][0], stripe_subscription['items']['data'][1]
+        subscription_items = stripe_subscription['items']['data']
+        shipping_item = next(i for i in subscription_items if i['price']['id'] == shipping_price_id)
+        box_item = next(i for i in subscription_items if i['id'] != shipping_item['id'])
 
         current_period_end = None
         period_end_ts = stripe_subscription.get('current_period_end')
