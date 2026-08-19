@@ -84,6 +84,7 @@ class PartnerStore(models.Model):
     logo = models.URLField(max_length=500, null=True, blank=True)
     contact_email = models.EmailField()
     website = models.URLField(blank=True)
+    stripe_subscription_product_id = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
         return self.store_name

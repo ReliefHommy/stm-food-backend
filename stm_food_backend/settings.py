@@ -261,6 +261,15 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # -------------------------------------------------
+# Stripe (subscriptions)
+# -------------------------------------------------
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+STRIPE_SHIPPING_PRICE_ID_WEEKLY = os.getenv("STRIPE_SHIPPING_PRICE_ID_WEEKLY")
+STRIPE_SHIPPING_PRICE_ID_BIWEEKLY = os.getenv("STRIPE_SHIPPING_PRICE_ID_BIWEEKLY")
+STRIPE_SHIPPING_PRICE_ID_MONTHLY = os.getenv("STRIPE_SHIPPING_PRICE_ID_MONTHLY")
+
+# -------------------------------------------------
 # Security for production
 # -------------------------------------------------
 if not DEBUG:
