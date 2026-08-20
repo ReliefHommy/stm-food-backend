@@ -1,17 +1,22 @@
+import json
 from calendar import monthrange
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 
 import stripe
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.utils.decorators import method_decorator
+from django.utils import timezone as dj_timezone
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from thefood.models import Customer, Product
+from thefood.models import Customer, Order, OrderItem, Product
 
-from .models import StripeCustomer, Subscription, SubscriptionItem
+from .models import StripeCustomer, StripeWebhookEvent, Subscription, SubscriptionItem
 from .serializers import SubscriptionStartSerializer
 
 SHIPPING_PRICE_SETTINGS = {
@@ -255,3 +260,208 @@ class SubscriptionStartView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+# Stripe's subscription statuses don't line up 1:1 with STATUS_CHOICES.
+# incomplete_expired (first invoice never paid, subscription auto-expired) and
+# unpaid (renewal exhausted all retries) don't have their own local status;
+# they're folded into the closest existing choice rather than adding new ones.
+STRIPE_SUBSCRIPTION_STATUS_MAP = {
+    'incomplete': 'incomplete',
+    'incomplete_expired': 'canceled',
+    'trialing': 'active',
+    'active': 'active',
+    'past_due': 'past_due',
+    'canceled': 'canceled',
+    'unpaid': 'past_due',
+    'paused': 'paused',
+}
+
+
+def _invoice_stripe_subscription_id(invoice):
+    # Basil-era Invoice: `subscription` was removed; the subscription now
+    # lives under parent.subscription_details.subscription (confirmed against
+    # a real invoice.payment_succeeded payload on API version
+    # 2026-07-29.dahlia -- invoice['subscription'] is simply absent/None).
+    parent = invoice.get('parent') or {}
+    subscription_details = parent.get('subscription_details') or {}
+    return subscription_details.get('subscription')
+
+
+def _handle_subscription_updated(obj):
+    stripe_subscription_id = obj.get('id')
+    try:
+        subscription = Subscription.objects.get(stripe_subscription_id=stripe_subscription_id)
+    except Subscription.DoesNotExist:
+        return
+
+    # current_period_end moved off the top-level Subscription onto each
+    # SubscriptionItem (same Basil-era change SubscriptionStartView already
+    # works around) -- confirmed absent at top level on a real
+    # customer.subscription.updated payload.
+    current_period_end = subscription.current_period_end
+    items = (obj.get('items') or {}).get('data') or []
+    if items:
+        period_end_ts = items[0].get('current_period_end')
+        if period_end_ts:
+            current_period_end = datetime.fromtimestamp(period_end_ts, tz=timezone.utc)
+
+    new_status = STRIPE_SUBSCRIPTION_STATUS_MAP.get(obj.get('status'), subscription.status)
+
+    subscription.status = new_status
+    subscription.current_period_end = current_period_end
+    subscription.save(update_fields=['status', 'current_period_end', 'updated_at'])
+
+
+def _handle_subscription_deleted(obj):
+    stripe_subscription_id = obj.get('id')
+    try:
+        subscription = Subscription.objects.get(stripe_subscription_id=stripe_subscription_id)
+    except Subscription.DoesNotExist:
+        return
+
+    subscription.status = 'canceled'
+    subscription.canceled_at = dj_timezone.now()
+    subscription.save(update_fields=['status', 'canceled_at', 'updated_at'])
+
+
+def _handle_invoice_payment_succeeded(obj):
+    stripe_subscription_id = _invoice_stripe_subscription_id(obj)
+    if not stripe_subscription_id:
+        return  # one-off invoice, not tied to a subscription -- nothing to fulfill
+
+    try:
+        subscription = Subscription.objects.select_related('user').get(
+            stripe_subscription_id=stripe_subscription_id
+        )
+    except Subscription.DoesNotExist:
+        return
+
+    items = list(subscription.items.select_related('product'))
+    backorder_notes = []
+    # amount_paid is what Stripe actually charged: box items + shipping +
+    # tax. Summing product.price * quantity would silently drop the
+    # shipping line item (and any tax) from the order total.
+    total_amount = Decimal(obj.get('amount_paid') or 0) / 100
+
+    with transaction.atomic():
+        for item in items:
+            product = item.product
+
+            if product.stock_quantity is not None:
+                if item.quantity > product.stock_quantity:
+                    shortfall = item.quantity - product.stock_quantity
+                    backorder_notes.append(f"Backorder: {product.title} short by {shortfall}")
+                    product.stock_quantity = 0
+                else:
+                    product.stock_quantity -= item.quantity
+                product.save(update_fields=['stock_quantity'])
+
+        shipping_address = subscription.shipping_address
+        if subscription.city or subscription.postal_code or subscription.country:
+            shipping_address = (
+                f"{subscription.shipping_address}\n"
+                f"{subscription.city}, {subscription.postal_code}\n"
+                f"{subscription.country}"
+            )
+
+        order = Order.objects.create(
+            user=subscription.user,
+            subscription=subscription,
+            status='PENDING',
+            total_amount=total_amount,
+            full_name=subscription.full_name,
+            phone=subscription.phone,
+            shipping_address=shipping_address,
+            delivery_date=subscription.next_delivery_date,
+            notes='\n'.join(backorder_notes) or None,
+        )
+
+        for item in items:
+            OrderItem.objects.create(
+                order=order,
+                product=item.product,
+                quantity=item.quantity,
+                price_at_purchase=item.product.price,
+            )
+
+        subscription.next_delivery_date = _next_delivery_date(
+            subscription.frequency, from_date=subscription.next_delivery_date
+        )
+        subscription.save(update_fields=['next_delivery_date', 'updated_at'])
+
+
+def _handle_invoice_payment_failed(obj):
+    stripe_subscription_id = _invoice_stripe_subscription_id(obj)
+    if not stripe_subscription_id:
+        return
+
+    try:
+        subscription = Subscription.objects.get(stripe_subscription_id=stripe_subscription_id)
+    except Subscription.DoesNotExist:
+        return
+
+    subscription.status = 'past_due'
+    subscription.save(update_fields=['status', 'updated_at'])
+
+
+STRIPE_WEBHOOK_HANDLERS = {
+    'customer.subscription.updated': _handle_subscription_updated,
+    'customer.subscription.deleted': _handle_subscription_deleted,
+    'invoice.payment_succeeded': _handle_invoice_payment_succeeded,
+    'invoice.payment_failed': _handle_invoice_payment_failed,
+}
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class StripeWebhookView(APIView):
+    # Stripe isn't a logged-in user: no JWT auth, no DRF parsers (they'd
+    # consume request.body before we can verify the signature against it),
+    # and CSRF-exempt since this is a server-to-server POST with no session.
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    parser_classes = []
+
+    def post(self, request):
+        payload = request.body
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+            )
+        except (ValueError, stripe.SignatureVerificationError):
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        # Read fields from the raw parsed JSON rather than the typed Event
+        # object -- stripe-python 15+ typed resources disable dict-style
+        # .get() (see SubscriptionStartView above), and we need permissive
+        # .get() chains to navigate payload shapes that vary by event type.
+        payload_dict = json.loads(payload)
+        event_type = payload_dict.get('type')
+        obj = (payload_dict.get('data') or {}).get('object') or {}
+
+        # Claim the event via the unique constraint on stripe_event_id
+        # *before* running the handler, not after: a check-then-act
+        # (exists() then create()) leaves a race window where two
+        # redeliveries arriving close together (Stripe retries on timeout or
+        # an ambiguous response) can both pass the check and both run the
+        # handler. Claiming first means a concurrent duplicate blocks on the
+        # same row and then fails with IntegrityError once this transaction
+        # commits. If the handler raises, the whole transaction --
+        # claim included -- rolls back, so a later retry can still
+        # reprocess it from scratch rather than being permanently skipped.
+        try:
+            with transaction.atomic():
+                webhook_event = StripeWebhookEvent.objects.create(
+                    stripe_event_id=event.id, type=event_type, payload=payload_dict,
+                )
+                handler = STRIPE_WEBHOOK_HANDLERS.get(event_type)
+                if handler:
+                    handler(obj)
+                webhook_event.processed_at = dj_timezone.now()
+                webhook_event.save(update_fields=['processed_at'])
+        except IntegrityError:
+            return Response(status=status.HTTP_200_OK)  # already claimed by another delivery
+
+        return Response(status=status.HTTP_200_OK)
