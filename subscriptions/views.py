@@ -17,7 +17,7 @@ from rest_framework.views import APIView
 from thefood.models import Customer, Order, OrderItem, Product
 
 from .models import StripeCustomer, StripeWebhookEvent, Subscription, SubscriptionItem
-from .serializers import SubscriptionStartSerializer
+from .serializers import SubscriptionItemsUpdateSerializer, SubscriptionStartSerializer
 
 SHIPPING_PRICE_SETTINGS = {
     'weekly': 'STRIPE_SHIPPING_PRICE_ID_WEEKLY',
@@ -38,6 +38,14 @@ FOOD_TAX_CODE = 'txcd_40040000'
 
 ACTIVE_SUBSCRIPTION_STATUSES = ('incomplete', 'active', 'past_due', 'paused')
 
+# Statuses with a live Stripe billing state to act on: 'incomplete' never
+# finished its first payment (no completed subscription to edit/cancel yet)
+# and 'canceled' is done -- both excluded. Shared by the items-edit and
+# cancel endpoints. Resume only ever makes sense from 'paused', and pause
+# only from these minus 'paused' itself -- both checked separately below.
+MANAGEABLE_SUBSCRIPTION_STATUSES = ('active', 'past_due', 'paused')
+PAUSABLE_SUBSCRIPTION_STATUSES = ('active', 'past_due')
+
 
 def _next_delivery_date(frequency, from_date=None):
     from_date = from_date or date.today()
@@ -52,6 +60,51 @@ def _next_delivery_date(frequency, from_date=None):
         day = min(from_date.day, monthrange(year, month)[1])
         return date(year, month, day)
     raise ValueError(f"Unknown frequency: {frequency}")
+
+
+def _resolve_and_validate_items(requested_items, partner_store=None):
+    """Look up requested products and validate them for subscription use.
+
+    If `partner_store` is given (editing an existing subscription), every
+    product must belong to it -- switching stores via an item edit is out of
+    scope. Otherwise (starting a new subscription), all products must share
+    a single store, whichever it is.
+
+    Returns (products_by_id, None) on success, or (None, error_response).
+    """
+    product_ids = [item['product_id'] for item in requested_items]
+    products = {p.id: p for p in Product.objects.filter(id__in=product_ids)}
+
+    missing_ids = set(product_ids) - set(products.keys())
+    if missing_ids:
+        return None, Response(
+            {'detail': f"Product(s) not found: {sorted(missing_ids)}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    ineligible = [p.title for p in products.values() if not p.is_subscription_eligible]
+    if ineligible:
+        return None, Response(
+            {'detail': f"Product(s) not eligible for subscription: {', '.join(ineligible)}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if partner_store is not None:
+        wrong_store = [p.title for p in products.values() if p.partner_store_id != partner_store.id]
+        if wrong_store:
+            return None, Response(
+                {'detail': f"Product(s) not from this subscription's partner store: {', '.join(wrong_store)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    else:
+        partner_store_ids = {p.partner_store_id for p in products.values()}
+        if len(partner_store_ids) > 1:
+            return None, Response(
+                {'detail': "All items in a subscription must come from a single partner store."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    return products, None
 
 
 class SubscriptionStartView(APIView):
@@ -70,29 +123,9 @@ class SubscriptionStartView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        product_ids = [item['product_id'] for item in requested_items]
-        products = {p.id: p for p in Product.objects.filter(id__in=product_ids)}
-
-        missing_ids = set(product_ids) - set(products.keys())
-        if missing_ids:
-            return Response(
-                {'detail': f"Product(s) not found: {sorted(missing_ids)}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        ineligible = [p.title for p in products.values() if not p.is_subscription_eligible]
-        if ineligible:
-            return Response(
-                {'detail': f"Product(s) not eligible for subscription: {', '.join(ineligible)}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        partner_store_ids = {p.partner_store_id for p in products.values()}
-        if len(partner_store_ids) > 1:
-            return Response(
-                {'detail': "All items in a subscription must come from a single partner store."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        products, error_response = _resolve_and_validate_items(requested_items)
+        if error_response:
+            return error_response
         partner_store = next(iter(products.values())).partner_store
 
         try:
@@ -262,6 +295,229 @@ class SubscriptionStartView(APIView):
         )
 
 
+def _get_owned_subscription(user):
+    """The user's current subscription (any status), most recent first.
+
+    Only one subscription can be in ACTIVE_SUBSCRIPTION_STATUSES at a time
+    (enforced in SubscriptionStartView), but a user can accumulate multiple
+    canceled ones over time, so 'current' means most recently created.
+    """
+    return Subscription.objects.filter(user=user).order_by('-created_at').first()
+
+
+def _subscription_not_found_response():
+    return Response(
+        {'detail': "No subscription found."}, status=status.HTTP_404_NOT_FOUND
+    )
+
+
+class SubscriptionMyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        subscription = _get_owned_subscription(request.user)
+        if subscription is None:
+            return _subscription_not_found_response()
+
+        items = list(subscription.items.select_related('product'))
+        box_total = sum(item.product.price * item.quantity for item in items)
+
+        return Response(
+            {
+                'id': subscription.id,
+                'status': subscription.status,
+                'frequency': subscription.frequency,
+                'next_delivery_date': subscription.next_delivery_date,
+                'current_period_end': subscription.current_period_end,
+                'partner_store_name': subscription.partner_store.store_name,
+                'box_total': box_total,
+                'items': [
+                    {
+                        'product_id': item.product.id,
+                        'title': item.product.title,
+                        'quantity': item.quantity,
+                        'price': item.product.price,
+                    }
+                    for item in items
+                ],
+            }
+        )
+
+
+class SubscriptionItemsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        subscription = _get_owned_subscription(request.user)
+        if subscription is None:
+            return _subscription_not_found_response()
+
+        if subscription.status not in MANAGEABLE_SUBSCRIPTION_STATUSES:
+            return Response(
+                {'detail': f"Subscription with status '{subscription.status}' cannot be edited."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = SubscriptionItemsUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        requested_items = serializer.validated_data['items']
+
+        products, error_response = _resolve_and_validate_items(
+            requested_items, partner_store=subscription.partner_store
+        )
+        if error_response:
+            return error_response
+
+        box_total = sum(
+            products[item['product_id']].price * item['quantity'] for item in requested_items
+        )
+        box_total_cents = round(box_total * 100)
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        try:
+            stripe.SubscriptionItem.modify(
+                subscription.stripe_box_item_id,
+                price_data={
+                    'currency': 'sek',
+                    'product': subscription.partner_store.stripe_subscription_product_id,
+                    'unit_amount': box_total_cents,
+                    'recurring': RECURRING_BY_FREQUENCY[subscription.frequency],
+                },
+                proration_behavior='none',
+            )
+        except stripe.StripeError as e:
+            return Response(
+                {'detail': f"Stripe error: {getattr(e, 'user_message', None) or str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        with transaction.atomic():
+            subscription.items.all().delete()
+            for item in requested_items:
+                SubscriptionItem.objects.create(
+                    subscription=subscription,
+                    product=products[item['product_id']],
+                    quantity=item['quantity'],
+                )
+
+        return Response(
+            {
+                'id': subscription.id,
+                'box_total': box_total,
+                'items': [
+                    {
+                        'product_id': products[item['product_id']].id,
+                        'title': products[item['product_id']].title,
+                        'quantity': item['quantity'],
+                        'price': products[item['product_id']].price,
+                    }
+                    for item in requested_items
+                ],
+            }
+        )
+
+
+class SubscriptionPauseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        subscription = _get_owned_subscription(request.user)
+        if subscription is None:
+            return _subscription_not_found_response()
+
+        if subscription.status not in PAUSABLE_SUBSCRIPTION_STATUSES:
+            return Response(
+                {'detail': f"Subscription with status '{subscription.status}' cannot be paused."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        try:
+            # pause_collection (not the preview pause/resume action -- see
+            # PR discussion) leaves Stripe's top-level `status` at 'active'
+            # and voids invoices instead of generating them, so no charge
+            # occurs while paused. Django's status only flips to 'paused'
+            # once the resulting customer.subscription.updated webhook
+            # lands and _handle_subscription_updated reads pause_collection
+            # back off the payload -- not set directly here.
+            stripe.Subscription.modify(
+                subscription.stripe_subscription_id,
+                pause_collection={'behavior': 'void'},
+            )
+        except stripe.StripeError as e:
+            return Response(
+                {'detail': f"Stripe error: {getattr(e, 'user_message', None) or str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response({'detail': "Pause requested."})
+
+
+class SubscriptionResumeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        subscription = _get_owned_subscription(request.user)
+        if subscription is None:
+            return _subscription_not_found_response()
+
+        if subscription.status != 'paused':
+            return Response(
+                {'detail': f"Subscription with status '{subscription.status}' cannot be resumed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        try:
+            # Clearing pause_collection (rather than the preview resume
+            # action) mirrors the pause path above -- Django's status syncs
+            # back via the webhook, not set directly here.
+            stripe.Subscription.modify(
+                subscription.stripe_subscription_id,
+                pause_collection='',
+            )
+        except stripe.StripeError as e:
+            return Response(
+                {'detail': f"Stripe error: {getattr(e, 'user_message', None) or str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response({'detail': "Resume requested."})
+
+
+class SubscriptionCancelView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        subscription = _get_owned_subscription(request.user)
+        if subscription is None:
+            return _subscription_not_found_response()
+
+        if subscription.status not in MANAGEABLE_SUBSCRIPTION_STATUSES:
+            return Response(
+                {'detail': f"Subscription with status '{subscription.status}' cannot be canceled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        try:
+            # cancel_at_period_end lets the already-paid-for current cycle
+            # finish. Django's status stays whatever it is now until the
+            # subscription actually ends and customer.subscription.deleted
+            # lands -- not flipped to 'canceled' here.
+            stripe.Subscription.modify(
+                subscription.stripe_subscription_id,
+                cancel_at_period_end=True,
+            )
+        except stripe.StripeError as e:
+            return Response(
+                {'detail': f"Stripe error: {getattr(e, 'user_message', None) or str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response({'detail': "Subscription will cancel at the end of the current period."})
+
+
 # Stripe's subscription statuses don't line up 1:1 with STATUS_CHOICES.
 # incomplete_expired (first invoice never paid, subscription auto-expired) and
 # unpaid (renewal exhausted all retries) don't have their own local status;
@@ -306,7 +562,16 @@ def _handle_subscription_updated(obj):
         if period_end_ts:
             current_period_end = datetime.fromtimestamp(period_end_ts, tz=timezone.utc)
 
-    new_status = STRIPE_SUBSCRIPTION_STATUS_MAP.get(obj.get('status'), subscription.status)
+    # pause_collection is how a paused subscription actually shows up on this
+    # payload -- Stripe's top-level `status` stays 'active' throughout a
+    # pause_collection pause (confirmed live: modifying pause_collection
+    # keeps status == 'active' but still fires this event), so it must be
+    # checked before falling back to the status map or Django would never
+    # see 'paused' at all.
+    if obj.get('pause_collection'):
+        new_status = 'paused'
+    else:
+        new_status = STRIPE_SUBSCRIPTION_STATUS_MAP.get(obj.get('status'), subscription.status)
 
     subscription.status = new_status
     subscription.current_period_end = current_period_end
