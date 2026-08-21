@@ -140,6 +140,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from .models import PartnerStore
 
+class PartnerStorePublicSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='store_name', read_only=True)
+
+    class Meta:
+        model = PartnerStore
+        fields = ['id', 'slug', 'name', 'description', 'logo', 'website']
+        read_only_fields = fields
+
+
 class StoreProfileSerializer(serializers.ModelSerializer):
     # user info as flat fields
     user_id = serializers.IntegerField(source="user.id", read_only=True)
