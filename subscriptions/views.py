@@ -175,13 +175,25 @@ class SubscriptionStartView(APIView):
                     user=request.user, stripe_customer_id=stripe_customer_obj.id
                 )
             else:
-                # Refresh address on the existing Customer object so Stripe Tax
-                # calculates against the customer's current delivery address.
+                # Refresh both address and shipping on the existing Customer
+                # object so Stripe Tax calculates against the customer's
+                # current delivery address. Previously only `address` was
+                # refreshed here, leaving `shipping.address` stale from
+                # whatever it was at Customer.create() time - if that data
+                # was ever bad (e.g. a non-ISO country string), automatic_tax
+                # would keep failing with "customer's location isn't
+                # recognized" even after the underlying Customer record was
+                # corrected.
                 stripe.Customer.modify(
                     stripe_customer.stripe_customer_id,
                     name=customer_profile.full_name,
                     phone=customer_profile.phone,
                     address=stripe_address,
+                    shipping={
+                        'name': customer_profile.full_name,
+                        'phone': customer_profile.phone,
+                        'address': stripe_address,
+                    },
                 )
 
             # Subscription items' price_data only accepts an existing Product ID
