@@ -28,6 +28,9 @@ foodvenv/
 ENV/
 env/
 
+### Claude context (reference only, never committed) ###
+_claude-context/
+
 ### IDE / Editor ###
 .vscode/
 .idea/

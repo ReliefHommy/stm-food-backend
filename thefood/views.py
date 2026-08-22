@@ -10,7 +10,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Product, Order, Category, StoreLocation, UserProfile,PartnerStore
-from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer,UserProfileSerializer,StoreProfileSerializer
+from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer,UserProfileSerializer,StoreProfileSerializer,PartnerStorePublicSerializer
 
 
 
@@ -78,6 +78,15 @@ class StoreProfileListView(generics.ListAPIView):
         return PartnerStore.objects.select_related("user").all().order_by("-id")
 
 
+#PartnerStoreDetailView
+class PartnerStoreDetailView(generics.RetrieveAPIView):
+    """Public, read-only store lookup by slug (e.g. for a storefront page)."""
+    queryset = PartnerStore.objects.all()
+    serializer_class = PartnerStorePublicSerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'slug'
+
+
 
 
 
@@ -95,8 +104,21 @@ class ProductViewSet(viewsets.ModelViewSet):
         user = self.request.user
         # Partners see their own products in the generic list
         if user.is_authenticated and getattr(user, 'is_partner', False):
-            return Product.objects.filter(partner_store__user=user)
-        return Product.objects.all()
+            queryset = Product.objects.filter(partner_store__user=user)
+        else:
+            queryset = Product.objects.all()
+
+        store_slug = self.request.query_params.get('store')
+        if store_slug:
+            queryset = queryset.filter(partner_store__slug=store_slug)
+
+        eligible_param = self.request.query_params.get('is_subscription_eligible')
+        if eligible_param is not None:
+            queryset = queryset.filter(
+                is_subscription_eligible=eligible_param.lower() in ('true', '1', 'yes')
+            )
+
+        return queryset
     
     def create(self, request, *args, **kwargs):
         print("📦 Incoming data:", request.data)
