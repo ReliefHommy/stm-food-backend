@@ -131,8 +131,26 @@ class SubscriptionStartView(APIView):
         try:
             customer_profile = request.user.customer
         except Customer.DoesNotExist:
+            customer_profile = None
+
+        delivery_address = serializer.validated_data.get('delivery_address')
+        if delivery_address is not None:
+            # Upsert: create the Customer row for a first-time subscriber, or
+            # refresh it if they re-submitted from the inline address form
+            # (e.g. after fixing a validation error). The Stripe Customer
+            # sync below already reads every field back off customer_profile.
+            if customer_profile is None:
+                customer_profile = Customer.objects.create(user=request.user, **delivery_address)
+            else:
+                for field, value in delivery_address.items():
+                    setattr(customer_profile, field, value)
+                customer_profile.save(update_fields=list(delivery_address.keys()))
+        elif customer_profile is None:
             return Response(
-                {'detail': "Please complete your delivery address before starting a subscription."},
+                {
+                    'detail': "Please complete your delivery address before starting a subscription.",
+                    'code': 'delivery_address_required',
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

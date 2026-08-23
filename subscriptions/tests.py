@@ -1,6 +1,7 @@
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
+from django.conf import settings
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -24,8 +25,8 @@ def fake_subscription_response(sub_id='sub_test123', shipping_price_id='price_we
         'id': sub_id,
         'items': {
             'data': [
-                {'id': 'si_box_test', 'price': {'id': 'price_data_generated'}},
-                {'id': 'si_shipping_test', 'price': {'id': shipping_price_id}},
+                {'id': 'si_box_test', 'price': {'id': 'price_data_generated'}, 'current_period_end': None},
+                {'id': 'si_shipping_test', 'price': {'id': shipping_price_id}, 'current_period_end': None},
             ]
         },
         'latest_invoice': {
@@ -216,3 +217,109 @@ class SubscriptionStartViewTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn('items', response.data)
         self.assertFalse(Subscription.objects.exists())
+
+
+class SubscriptionStartDeliveryAddressTests(TestCase):
+    """Task 6.5-C: inline delivery-address collection on /start/ for a
+    customer who has no Customer row yet."""
+
+    VALID_ADDRESS = {
+        'full_name': 'New Customer',
+        'phone': '555-9999',
+        'shipping_address': '456 Oak St',
+        'city': 'Portland',
+        'postal_code': '97201',
+        'country': 'us',  # lowercase on purpose -- must be uppercased
+    }
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email='newcustomer@example.com', password='testpass123')
+        self.assertFalse(Customer.objects.filter(user=self.user).exists())
+
+        vendor_user = User.objects.create_user(email='vendor3@example.com', password='testpass123')
+        self.store = PartnerStore.objects.create(
+            user=vendor_user, store_name='Thai Flavours', slug='thai-flavours-2', contact_email='vendor3@example.com'
+        )
+        self.product = Product.objects.create(
+            title='Pad Thai Kit', description='desc', price=Decimal('12.50'),
+            partner_store=self.store, is_subscription_eligible=True,
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_rejects_when_no_customer_and_no_delivery_address_given(self):
+        response = self.client.post('/api/subscriptions/start/', {
+            'frequency': 'weekly',
+            'items': [{'product_id': self.product.id, 'quantity': 1}],
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['code'], 'delivery_address_required')
+        self.assertFalse(Customer.objects.filter(user=self.user).exists())
+
+    def test_rejects_non_iso_country_in_delivery_address(self):
+        response = self.client.post('/api/subscriptions/start/', {
+            'frequency': 'weekly',
+            'items': [{'product_id': self.product.id, 'quantity': 1}],
+            'delivery_address': {**self.VALID_ADDRESS, 'country': 'Sweden'},
+        }, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('country', response.data['delivery_address'])
+        self.assertFalse(Customer.objects.filter(user=self.user).exists())
+
+    @patch('subscriptions.views.stripe.Subscription.create')
+    @patch('subscriptions.views.stripe.Customer.create')
+    def test_creates_customer_and_syncs_stripe_address_and_shipping(
+        self, mock_customer_create, mock_subscription_create
+    ):
+        mock_customer_create.return_value = MagicMock(id='cus_new123')
+        mock_subscription_create.return_value = fake_subscription_response(
+            'sub_new_addr_1', shipping_price_id=settings.STRIPE_SHIPPING_PRICE_ID_WEEKLY
+        )
+
+        response = self.client.post('/api/subscriptions/start/', {
+            'frequency': 'weekly',
+            'items': [{'product_id': self.product.id, 'quantity': 1}],
+            'delivery_address': self.VALID_ADDRESS,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201, response.data)
+
+        customer = Customer.objects.get(user=self.user)
+        self.assertEqual(customer.full_name, 'New Customer')
+        self.assertEqual(customer.country, 'US')  # uppercased by the serializer
+
+        _, kwargs = mock_customer_create.call_args
+        self.assertEqual(kwargs['address']['country'], 'US')
+        self.assertEqual(kwargs['shipping']['address']['country'], 'US')
+        self.assertEqual(kwargs['shipping']['name'], 'New Customer')
+
+    @patch('subscriptions.views.stripe.Subscription.create')
+    @patch('subscriptions.views.stripe.Customer.modify')
+    def test_updates_existing_customer_when_delivery_address_resubmitted(
+        self, mock_customer_modify, mock_subscription_create
+    ):
+        Customer.objects.create(
+            user=self.user, full_name='Old Name', phone='000', shipping_address='Old St',
+            city='Old City', postal_code='00000', country='US',
+        )
+        StripeCustomer.objects.create(user=self.user, stripe_customer_id='cus_existing_addr')
+        mock_subscription_create.return_value = fake_subscription_response(
+            'sub_addr_update_1', shipping_price_id=settings.STRIPE_SHIPPING_PRICE_ID_WEEKLY
+        )
+
+        response = self.client.post('/api/subscriptions/start/', {
+            'frequency': 'weekly',
+            'items': [{'product_id': self.product.id, 'quantity': 1}],
+            'delivery_address': self.VALID_ADDRESS,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201, response.data)
+
+        customer = Customer.objects.get(user=self.user)
+        self.assertEqual(customer.full_name, 'New Customer')
+        self.assertEqual(customer.shipping_address, '456 Oak St')
+
+        _, kwargs = mock_customer_modify.call_args
+        self.assertEqual(kwargs['shipping']['address']['country'], 'US')
