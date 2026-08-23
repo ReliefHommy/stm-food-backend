@@ -181,6 +181,15 @@ REST_FRAMEWORK = {
     )
 }
 
+# Default access token lifetime is 5 minutes, which is too fragile for real
+# usage sessions pre-launch (no refresh flow exists yet). Loosened for now;
+# tighten again as part of go-live hardening.
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=8),
+}
+
 
 
 
