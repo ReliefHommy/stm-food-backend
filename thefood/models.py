@@ -108,6 +108,7 @@ class StoreLocation(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
+    thai_name = models.CharField(max_length=100, blank=True, default="")
     icon = models.CharField(max_length=100, blank=True)
     slug = models.SlugField(unique=True)
     image = models.URLField(max_length=500, null=True, blank=True)
