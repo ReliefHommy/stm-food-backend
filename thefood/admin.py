@@ -55,7 +55,9 @@ class RecipeAdmin(admin.ModelAdmin):
 class PartnerStoreAdmin(admin.ModelAdmin):
     list_display = ('store_name', 'user', 'contact_email', 'website', 'logo')
     search_fields = ('store_name', 'user__username')
- 
+
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'thai_name', 'slug')
 
     
         
@@ -102,7 +104,7 @@ admin.site.register(User, UserAdmin)
 admin.site.register(Customer)
 admin.site.register(PartnerStore,PartnerStoreAdmin)
 admin.site.register(StoreLocation)
-admin.site.register(Category)
+admin.site.register(Category, CategoryAdmin)
 admin.site.register(Brand)
 admin.site.register(Product,ProductAdmin)
 admin.site.register(Cart)
