@@ -15,7 +15,7 @@ class ProductSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'slug', 'icon', 'image']
+        fields = ['id', 'name', 'thai_name', 'slug', 'icon', 'image']
         read_only_fields = ['id', 'slug']
         extra_kwargs = {
             'image': {'required': False, 'allow_null': True},
