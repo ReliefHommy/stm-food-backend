@@ -291,4 +291,32 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
 
+# -------------------------------------------------
+# Logging
+# -------------------------------------------------
+# Django's default logging config only prints to console when DEBUG=True,
+# and only emails ADMINS (unset here) when DEBUG=False — so unhandled 500s
+# vanish silently in production. Route them to stdout unconditionally so
+# Railway captures the traceback.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+}
+
 
