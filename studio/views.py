@@ -1,6 +1,7 @@
 import json
 from rest_framework.views import APIView
 from rest_framework import viewsets, permissions, generics,status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -35,14 +36,14 @@ class CampaignViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         if not getattr(user, 'is_partner', False):
-            raise permissions.PermissionDenied("Not authorized to create campaigns")
+            raise PermissionDenied("Not authorized to create campaigns")
         serializer.save()  # created_by set in serializer.create()
 
     def perform_update(self, serializer):
         obj = self.get_object()
         user = self.request.user
         if user.is_partner and getattr(obj.created_by, "id", None) != user.id:
-            raise permissions.PermissionDenied("Not authorized to edit this campaign")
+            raise PermissionDenied("Not authorized to edit this campaign")
         serializer.save()
 
 
