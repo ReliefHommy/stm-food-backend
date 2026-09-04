@@ -154,8 +154,7 @@ class STMPostViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PublishFromCampaignAPIView(APIView):
 
-    #permission_classes = [permissions.IsAuthenticated]  # protect this!
-    permission_classes = [permissions.AllowAny] 
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request,campaign_id, *args, **kwargs):
         cp = get_object_or_404(CampaignPost, pk=campaign_id)
@@ -212,19 +211,4 @@ class PublishFromCampaignAPIView(APIView):
             serializer.data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
-    
-# Optional: allow GET from browser for quick testing
-    def get(self, request, campaign_id, *args, **kwargs):
-        return self.post(request, campaign_id, *args, **kwargs)    
-    
-    
-
-       
-
-      
-
-    
-        
-
-
 
