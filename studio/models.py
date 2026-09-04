@@ -105,6 +105,8 @@ class CampaignPost(models.Model):
     ig_text = models.TextField(blank=True)
     pin_title = models.CharField(max_length=255, blank=True)
     pin_desc = models.TextField(blank=True)
+    blog_excerpt = models.TextField(blank=True)
+    blog_body = models.TextField(blank=True)
     cta = models.CharField(max_length=255, blank=True)
     hashtags = models.JSONField(default=list, blank=True)
     designTemplate = models.ForeignKey(DesignTemplate, on_delete=models.CASCADE, related_name="campaignPosts", null=True, blank=True)

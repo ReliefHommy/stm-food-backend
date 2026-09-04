@@ -6,7 +6,7 @@ class CampaignPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = CampaignPost
         fields = ('id','title','campaign','pillar','image_prompt','email_subject','email_body',
-                  'fb_text','ig_text','pin_title','pin_desc','cta','hashtags','created_at')
+                  'fb_text','ig_text','pin_title','pin_desc','blog_excerpt','blog_body','cta','hashtags','created_at')
 
     # 👇 This is the important line
         extra_kwargs = {
@@ -44,6 +44,8 @@ class CampaignSerializer(serializers.ModelSerializer):
                 ig_text=p.get("ig_text", ""),
                 pin_title=p.get("pin_title", ""),
                 pin_desc=p.get("pin_desc", ""),
+                blog_excerpt=p.get("blog_excerpt", ""),
+                blog_body=p.get("blog_body", ""),
                 cta=p.get("cta", ""),
                 hashtags=p.get("hashtags", []),
             )
