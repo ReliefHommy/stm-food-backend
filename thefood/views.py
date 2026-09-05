@@ -9,8 +9,8 @@ from rest_framework import viewsets, generics,permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Product, Order, Category, StoreLocation, UserProfile,PartnerStore
-from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer,UserProfileSerializer,StoreProfileSerializer,PartnerStorePublicSerializer
+from .models import Product, Order, Category, StoreLocation, UserProfile,PartnerStore, Blog
+from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer,UserProfileSerializer,StoreProfileSerializer,PartnerStorePublicSerializer, BlogSerializer
 
 
 
@@ -163,6 +163,22 @@ class StoreLocationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = StoreLocationSerializer
     permission_classes = [permissions.AllowAny]
     # default lookup is pk
+
+
+class BlogViewSet(viewsets.ReadOnlyModelViewSet):
+    """Public, read-only API for a partner store's blog posts. Supports ?store=<slug>."""
+    serializer_class = BlogSerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'slug'
+
+    def get_queryset(self):
+        queryset = Blog.objects.select_related('author', 'related_recipe').prefetch_related('related_products').all()
+
+        store_slug = self.request.query_params.get('store')
+        if store_slug:
+            queryset = queryset.filter(author__slug=store_slug)
+
+        return queryset
 
 
 #VendorProductListCreateView
