@@ -112,6 +112,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         if store_slug:
             queryset = queryset.filter(partner_store__slug=store_slug)
 
+        category_slug = self.request.query_params.get('category')
+        if category_slug:
+            queryset = queryset.filter(category__slug=category_slug)
+
         eligible_param = self.request.query_params.get('is_subscription_eligible')
         if eligible_param is not None:
             queryset = queryset.filter(
