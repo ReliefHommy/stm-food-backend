@@ -87,6 +87,15 @@ class PartnerStoreDetailView(generics.RetrieveAPIView):
     lookup_field = 'slug'
 
 
+class PartnerStoreListView(generics.ListAPIView):
+    """Public, read-only list of partner stores."""
+    serializer_class = PartnerStorePublicSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        return PartnerStore.objects.all().order_by('store_name')
+
+
 
 
 
