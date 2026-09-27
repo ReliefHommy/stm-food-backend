@@ -9,8 +9,9 @@ from rest_framework import viewsets, generics,permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Product, Order, Category, StoreLocation, UserProfile,PartnerStore, Blog
-from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer,UserProfileSerializer,StoreProfileSerializer,PartnerStorePublicSerializer, BlogSerializer
+from rest_framework.decorators import action
+from .models import Product, Order, Category, StoreLocation, UserProfile,PartnerStore, Blog, Recipe
+from .serializers import ProductSerializer, OrderCreateSerializer, OrderSerializer, CategorySerializer, StoreLocationSerializer,UserProfileSerializer,StoreProfileSerializer,PartnerStorePublicSerializer, BlogSerializer, RecipeSerializer, IngredientSerializer
 
 
 
@@ -192,6 +193,44 @@ class BlogViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(author__slug=store_slug)
 
         return queryset
+
+
+class RecipeViewSet(viewsets.ReadOnlyModelViewSet):
+    """Public, read-only API for recipes. Supports ?store=<slug>."""
+    serializer_class = RecipeSerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'slug'
+
+    def get_queryset(self):
+        queryset = (
+            Recipe.objects.select_related('author')
+            .prefetch_related('products__store_location', 'ingredient_items')
+            .all()
+        )
+
+        store_slug = self.request.query_params.get('store')
+        if store_slug:
+            queryset = queryset.filter(author__slug=store_slug)
+
+        return queryset
+
+    @action(detail=True, url_path='where-to-buy')
+    def where_to_buy(self, request, slug=None):
+        """For each ingredient in this recipe, list the available products that sell it."""
+        recipe = self.get_object()
+        data = [
+            {
+                'ingredient': IngredientSerializer(ingredient).data,
+                'products': ProductSerializer(
+                    ingredient.products.filter(is_available=True).select_related(
+                        'partner_store', 'category', 'store_location'
+                    ),
+                    many=True,
+                ).data,
+            }
+            for ingredient in recipe.ingredient_items.all()
+        ]
+        return Response(data)
 
 
 #VendorProductListCreateView

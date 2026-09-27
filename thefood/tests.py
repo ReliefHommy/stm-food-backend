@@ -2,7 +2,7 @@ from rest_framework.test import APITestCase
 from django.urls import reverse
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from .models import Category, PartnerStore, StoreLocation, Product
+from .models import Category, PartnerStore, StoreLocation, Product, Recipe, Ingredient
 
 
 class CategoryAPITests(APITestCase):
@@ -67,3 +67,75 @@ class StoreLocationTests(APITestCase):
         product.refresh_from_db()
         self.assertIsNotNone(product.store_location)
         self.assertEqual(product.store_location.pk, self.location.pk)
+
+
+class RecipeAPITests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(email='chef@example.com', password='p@ssword', username='chef')
+        self.store = PartnerStore.objects.create(user=self.user, store_name='Chef Store', slug='chef-store', contact_email='chef@example.com')
+
+        self.other_user = User.objects.create_user(email='other@example.com', password='p@ssword', username='other')
+        self.other_store = PartnerStore.objects.create(user=self.other_user, store_name='Other Store', slug='other-store', contact_email='other@example.com')
+
+        self.ingredient = Ingredient.objects.create(name_sv='Lime', slug='lime')
+        self.other_ingredient = Ingredient.objects.create(name_sv='Fisksås', slug='fisksas')
+
+        self.available_product = Product.objects.create(
+            title='Fresh Lime', description='desc', price='10.00', partner_store=self.store,
+            ingredient=self.ingredient, is_available=True,
+        )
+        self.unavailable_product = Product.objects.create(
+            title='Out of Stock Lime', description='desc', price='12.00', partner_store=self.store,
+            ingredient=self.ingredient, is_available=False,
+        )
+
+        self.recipe = Recipe.objects.create(
+            title='Som Tam', slug='som-tam', description='desc',
+            ingredients='lime, fish sauce', instructions='mix it all',
+            author=self.store,
+        )
+        self.recipe.ingredient_items.set([self.ingredient])
+
+        self.other_recipe = Recipe.objects.create(
+            title='Other Dish', slug='other-dish', description='desc',
+            ingredients='n/a', instructions='n/a',
+            author=self.other_store,
+        )
+
+    def test_list_recipes(self):
+        url = reverse('recipe-list')
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 2)
+
+    def test_filter_recipes_by_store(self):
+        url = reverse('recipe-list')
+        resp = self.client.get(url, {'store': self.store.slug})
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]['slug'], 'som-tam')
+
+    def test_retrieve_recipe_by_slug(self):
+        url = reverse('recipe-detail', kwargs={'slug': 'som-tam'})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data['title'], 'Som Tam')
+        self.assertEqual(len(resp.data['ingredient_items']), 1)
+        self.assertEqual(resp.data['ingredient_items'][0]['slug'], 'lime')
+
+    def test_where_to_buy_only_lists_available_products_for_recipe_ingredients(self):
+        url = reverse('recipe-where-to-buy', kwargs={'slug': 'som-tam'})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 1)
+        entry = resp.data[0]
+        self.assertEqual(entry['ingredient']['slug'], 'lime')
+        self.assertEqual(len(entry['products']), 1)
+        self.assertEqual(entry['products'][0]['title'], 'Fresh Lime')
+
+    def test_where_to_buy_empty_for_recipe_without_ingredient_items(self):
+        url = reverse('recipe-where-to-buy', kwargs={'slug': 'other-dish'})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data, [])
