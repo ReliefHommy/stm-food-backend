@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 # Register your models here.
 from .models import (
-    User, Customer, PartnerStore, StoreLocation, Category, Brand, Product,Cart, CartItem, Order,OrderItem,Recipe,Blog,NewsletterSignup
+    User, Customer, PartnerStore, StoreLocation, Category, Brand, Product,Cart, CartItem, Order,OrderItem,Recipe,Blog,NewsletterSignup,Ingredient
 )
 # Extend Django's UserAdmin to show custom fields
 
@@ -39,9 +39,10 @@ class CartAdmin(admin.ModelAdmin):
 #ProductAdmin
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('id','title','slug', 'price', 'is_available', 'is_subscription_eligible', 'stock_quantity', 'brand', 'category','partner_store', 'created_at','image')
-    list_filter = ('partner_store','brand', 'category', 'is_available', 'is_subscription_eligible')
+    list_filter = ('partner_store','brand', 'category', 'is_available', 'is_subscription_eligible', 'ingredient')
     search_fields = ('title', 'description')
     prepopulated_fields = {'slug': ('title',)}  # ✅ auto fills slug based on title
+    autocomplete_fields = ['ingredient']
 
    
 
@@ -50,6 +51,7 @@ class ProductAdmin(admin.ModelAdmin):
 class RecipeAdmin(admin.ModelAdmin):
     list_display = ('title', 'author', 'created_at', 'image')
     search_fields = ('title', 'ingredients', 'instructions')
+    filter_horizontal = ['ingredient_items']
   
 # partners see only selected models in the sidebar
 class PartnerStoreAdmin(admin.ModelAdmin):
@@ -66,6 +68,12 @@ class CategoryAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('full_name', 'user', 'city', 'country')
     search_fields = ('full_name', 'user__username')
+
+
+class IngredientAdmin(admin.ModelAdmin):
+    list_display = ('name_sv', 'name_th', 'name_en', 'slug')
+    search_fields = ('name_sv', 'name_th', 'name_en')
+    prepopulated_fields = {'slug': ('name_sv',)}
 
 
 # Custom Administation site
@@ -114,6 +122,7 @@ admin.site.register(OrderItem)
 admin.site.register(Recipe)
 admin.site.register(Blog)
 admin.site.register(NewsletterSignup)
+admin.site.register(Ingredient, IngredientAdmin)
 
 
 

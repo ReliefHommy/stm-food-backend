@@ -125,6 +125,20 @@ class Brand(models.Model):
         return self.name
 
 
+class Ingredient(models.Model):
+    name_sv = models.CharField(max_length=255)
+    name_th = models.CharField(max_length=255, blank=True)
+    name_en = models.CharField(max_length=255, blank=True)
+    slug = models.SlugField(unique=True)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['name_sv']
+
+    def __str__(self):
+        return self.name_sv
+
+
 class Product(models.Model):
     title = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, blank=True)  # 👈 Add this line
@@ -141,6 +155,7 @@ class Product(models.Model):
     # Optional denormalized link to a StoreLocation to support location-based queries
     store_location = models.ForeignKey('StoreLocation', on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
     created_at = models.DateTimeField(auto_now_add=True)
+    ingredient = models.ForeignKey('Ingredient', null=True, blank=True, on_delete=models.SET_NULL, related_name='products')
 
     def save(self, *args, **kwargs):
         # ✅ regenerate slug if new OR title changed
@@ -242,6 +257,7 @@ class Recipe(models.Model):
     author = models.ForeignKey(PartnerStore, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     products = models.ManyToManyField(Product, related_name='recipes')  # link to products
+    ingredient_items = models.ManyToManyField('Ingredient', related_name='recipes', blank=True)
 
 
     def __str__(self):
