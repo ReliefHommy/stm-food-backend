@@ -149,13 +149,35 @@ class PartnerStorePublicSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-from .models import Blog, Recipe
+from .models import Blog, Recipe, Ingredient
 
 
 class BlogRecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ['id', 'title', 'slug', 'image']
+        read_only_fields = fields
+
+
+class IngredientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ingredient
+        fields = ['id', 'name_sv', 'name_th', 'name_en', 'slug', 'description']
+        read_only_fields = fields
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+    """Public, read-only serializer for a partner store's recipes."""
+    author = PartnerStorePublicSerializer(read_only=True)
+    products = ProductSerializer(many=True, read_only=True)
+    ingredient_items = IngredientSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Recipe
+        fields = [
+            'id', 'title', 'slug', 'description', 'image', 'ingredients',
+            'instructions', 'author', 'created_at', 'products', 'ingredient_items',
+        ]
         read_only_fields = fields
 
 

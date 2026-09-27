@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from thefood.views import OrderListAPIView
-from .views import ProductViewSet, OrderViewSet,OrderCreateAPIView,OrderListAPIView,OrderDetailAPIView,VendorProductListCreateView,CategoryViewSet,StoreLocationViewSet,UserProfileListView,StoreProfileListView,PartnerStoreDetailView,PartnerStoreListView,BlogViewSet
+from .views import ProductViewSet, OrderViewSet,OrderCreateAPIView,OrderListAPIView,OrderDetailAPIView,VendorProductListCreateView,CategoryViewSet,StoreLocationViewSet,UserProfileListView,StoreProfileListView,PartnerStoreDetailView,PartnerStoreListView,BlogViewSet,RecipeViewSet
 
 
 
@@ -11,6 +11,7 @@ router.register(r'orders', OrderViewSet, basename='orders')
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'store-locations', StoreLocationViewSet, basename='storelocation')
 router.register(r'blog', BlogViewSet, basename='blog')
+router.register(r'recipes', RecipeViewSet, basename='recipe')
 
 
 
