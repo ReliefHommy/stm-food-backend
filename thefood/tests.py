@@ -1,8 +1,9 @@
+from django.db import IntegrityError, transaction
 from rest_framework.test import APITestCase
 from django.urls import reverse
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from .models import Category, PartnerStore, StoreLocation, Product, Recipe, Ingredient
+from .models import Category, PartnerStore, StoreLocation, Product, Recipe, Ingredient, RecipeIngredient
 
 
 class CategoryAPITests(APITestCase):
@@ -95,7 +96,7 @@ class RecipeAPITests(APITestCase):
             ingredients='lime, fish sauce', instructions='mix it all',
             author=self.store,
         )
-        self.recipe.ingredient_items.set([self.ingredient])
+        RecipeIngredient.objects.create(recipe=self.recipe, ingredient=self.ingredient, quantity='2 st')
 
         self.other_recipe = Recipe.objects.create(
             title='Other Dish', slug='other-dish', description='desc',
@@ -123,6 +124,11 @@ class RecipeAPITests(APITestCase):
         self.assertEqual(resp.data['title'], 'Som Tam')
         self.assertEqual(len(resp.data['ingredient_items']), 1)
         self.assertEqual(resp.data['ingredient_items'][0]['slug'], 'lime')
+        self.assertEqual(len(resp.data['recipe_ingredients']), 1)
+        entry = resp.data['recipe_ingredients'][0]
+        self.assertEqual(entry['ingredient']['slug'], 'lime')
+        self.assertEqual(entry['quantity'], '2 st')
+        self.assertFalse(entry['is_essential'])
 
     def test_where_to_buy_only_lists_available_products_for_recipe_ingredients(self):
         url = reverse('recipe-where-to-buy', kwargs={'slug': 'som-tam'})
@@ -139,3 +145,45 @@ class RecipeAPITests(APITestCase):
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data, [])
+
+    def test_recipe_ingredient_is_unique_per_recipe(self):
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                RecipeIngredient.objects.create(recipe=self.recipe, ingredient=self.ingredient)
+        # The same ingredient can still be used in another recipe.
+        RecipeIngredient.objects.create(recipe=self.other_recipe, ingredient=self.ingredient)
+        self.assertEqual(self.ingredient.recipe_uses.count(), 2)
+
+    def test_where_to_buy_orders_essential_then_hard_to_find(self):
+        galangal = Ingredient.objects.create(name_sv='Galangal', slug='galangal', hard_to_find_in_sweden=True)
+        rice = Ingredient.objects.create(name_sv='Ris', slug='ris')
+        basil = Ingredient.objects.create(name_sv='Thaibasilika', slug='thaibasilika', hard_to_find_in_sweden=True)
+        Product.objects.create(
+            title='Frozen Galangal', description='desc', price='25.00', partner_store=self.store,
+            ingredient=galangal, is_available=True,
+        )
+        recipe = Recipe.objects.create(
+            title='Tom Kha', slug='tom-kha', description='desc',
+            ingredients='n/a', instructions='n/a', author=self.store,
+        )
+        # plain optional, hard-to-find optional, plain essential, hard-to-find essential
+        RecipeIngredient.objects.create(recipe=recipe, ingredient=rice, quantity='1 dl')
+        RecipeIngredient.objects.create(recipe=recipe, ingredient=basil, quantity='1 knippe')
+        RecipeIngredient.objects.create(recipe=recipe, ingredient=self.ingredient, quantity='1 st', is_essential=True)
+        RecipeIngredient.objects.create(recipe=recipe, ingredient=galangal, quantity='3 skivor', is_essential=True)
+
+        url = reverse('recipe-where-to-buy', kwargs={'slug': 'tom-kha'})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [e['ingredient']['slug'] for e in resp.data],
+            ['galangal', 'lime', 'thaibasilika', 'ris'],
+        )
+        by_slug = {e['ingredient']['slug']: e for e in resp.data}
+        self.assertEqual(by_slug['galangal']['quantity'], '3 skivor')
+        self.assertTrue(by_slug['galangal']['is_essential'])
+        self.assertFalse(by_slug['ris']['is_essential'])
+        self.assertEqual([p['title'] for p in by_slug['galangal']['products']], ['Frozen Galangal'])
+        self.assertEqual([p['title'] for p in by_slug['lime']['products']], ['Fresh Lime'])
+        self.assertEqual(by_slug['thaibasilika']['products'], [])
+        self.assertEqual(by_slug['ris']['products'], [])

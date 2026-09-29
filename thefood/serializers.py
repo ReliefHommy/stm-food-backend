@@ -149,7 +149,7 @@ class PartnerStorePublicSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-from .models import Blog, Recipe, Ingredient
+from .models import Blog, Recipe, Ingredient, RecipeIngredient
 
 
 class BlogRecipeSerializer(serializers.ModelSerializer):
@@ -162,7 +162,16 @@ class BlogRecipeSerializer(serializers.ModelSerializer):
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
-        fields = ['id', 'name_sv', 'name_th', 'name_en', 'slug', 'description']
+        fields = ['id', 'name_sv', 'name_th', 'name_en', 'slug', 'description', 'hard_to_find_in_sweden']
+        read_only_fields = fields
+
+
+class RecipeIngredientSerializer(serializers.ModelSerializer):
+    ingredient = IngredientSerializer(read_only=True)
+
+    class Meta:
+        model = RecipeIngredient
+        fields = ['ingredient', 'quantity', 'is_essential']
         read_only_fields = fields
 
 
@@ -170,15 +179,23 @@ class RecipeSerializer(serializers.ModelSerializer):
     """Public, read-only serializer for a partner store's recipes."""
     author = PartnerStorePublicSerializer(read_only=True)
     products = ProductSerializer(many=True, read_only=True)
-    ingredient_items = IngredientSerializer(many=True, read_only=True)
+    recipe_ingredients = RecipeIngredientSerializer(many=True, read_only=True)
+    # Kept for compatibility: same shape as before, now built from recipe_ingredients.
+    ingredient_items = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
         fields = [
             'id', 'title', 'slug', 'description', 'image', 'ingredients',
             'instructions', 'author', 'created_at', 'products', 'ingredient_items',
+            'recipe_ingredients',
         ]
         read_only_fields = fields
+
+    def get_ingredient_items(self, obj):
+        return IngredientSerializer(
+            [ri.ingredient for ri in obj.recipe_ingredients.all()], many=True
+        ).data
 
 
 class BlogSerializer(serializers.ModelSerializer):

@@ -204,7 +204,7 @@ class RecipeViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = (
             Recipe.objects.select_related('author')
-            .prefetch_related('products__store_location', 'ingredient_items')
+            .prefetch_related('products__store_location', 'recipe_ingredients__ingredient')
             .all()
         )
 
@@ -216,19 +216,27 @@ class RecipeViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, url_path='where-to-buy')
     def where_to_buy(self, request, slug=None):
-        """For each ingredient in this recipe, list the available products that sell it."""
+        """For each ingredient in this recipe, list the available products that sell it.
+
+        Essential ingredients come first, then those hard to find in Sweden.
+        """
         recipe = self.get_object()
+        recipe_ingredients = recipe.recipe_ingredients.select_related('ingredient').order_by(
+            '-is_essential', '-ingredient__hard_to_find_in_sweden', 'ingredient__name_sv'
+        )
         data = [
             {
-                'ingredient': IngredientSerializer(ingredient).data,
+                'ingredient': IngredientSerializer(ri.ingredient).data,
+                'quantity': ri.quantity,
+                'is_essential': ri.is_essential,
                 'products': ProductSerializer(
-                    ingredient.products.filter(is_available=True).select_related(
+                    ri.ingredient.products.filter(is_available=True).select_related(
                         'partner_store', 'category', 'store_location'
                     ),
                     many=True,
                 ).data,
             }
-            for ingredient in recipe.ingredient_items.all()
+            for ri in recipe_ingredients
         ]
         return Response(data)
 
