@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 # Register your models here.
 from .models import (
-    User, Customer, PartnerStore, StoreLocation, Category, Brand, Product,Cart, CartItem, Order,OrderItem,Recipe,Blog,NewsletterSignup,Ingredient
+    User, Customer, PartnerStore, StoreLocation, Category, Brand, Product,Cart, CartItem, Order,OrderItem,Recipe,Blog,NewsletterSignup,Ingredient,RecipeIngredient
 )
 # Extend Django's UserAdmin to show custom fields
 
@@ -47,11 +47,19 @@ class ProductAdmin(admin.ModelAdmin):
    
 
   
+class RecipeIngredientInline(admin.TabularInline):
+    model = RecipeIngredient
+    fields = ('ingredient', 'quantity', 'is_essential')
+    autocomplete_fields = ['ingredient']
+    extra = 1
+
+
 # RecipeAsmin
 class RecipeAdmin(admin.ModelAdmin):
     list_display = ('title', 'author', 'created_at', 'image')
     search_fields = ('title', 'ingredients', 'instructions')
-    filter_horizontal = ['ingredient_items']
+    exclude = ('ingredient_items',)
+    inlines = [RecipeIngredientInline]
   
 # partners see only selected models in the sidebar
 class PartnerStoreAdmin(admin.ModelAdmin):
@@ -71,7 +79,8 @@ class CustomerAdmin(admin.ModelAdmin):
 
 
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = ('name_sv', 'name_th', 'name_en', 'slug')
+    list_display = ('name_sv', 'name_th', 'name_en', 'slug', 'hard_to_find_in_sweden')
+    list_filter = ('hard_to_find_in_sweden',)
     search_fields = ('name_sv', 'name_th', 'name_en')
     prepopulated_fields = {'slug': ('name_sv',)}
 
@@ -119,7 +128,7 @@ admin.site.register(Cart)
 admin.site.register(CartItem)
 admin.site.register(Order)
 admin.site.register(OrderItem)
-admin.site.register(Recipe)
+admin.site.register(Recipe, RecipeAdmin)
 admin.site.register(Blog)
 admin.site.register(NewsletterSignup)
 admin.site.register(Ingredient, IngredientAdmin)

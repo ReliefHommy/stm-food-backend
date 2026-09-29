@@ -131,6 +131,7 @@ class Ingredient(models.Model):
     name_en = models.CharField(max_length=255, blank=True)
     slug = models.SlugField(unique=True)
     description = models.TextField(blank=True)
+    hard_to_find_in_sweden = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['name_sv']
@@ -262,6 +263,22 @@ class Recipe(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class RecipeIngredient(models.Model):
+    recipe = models.ForeignKey('Recipe', on_delete=models.CASCADE,
+                               related_name='recipe_ingredients')
+    ingredient = models.ForeignKey('Ingredient', on_delete=models.CASCADE,
+                                   related_name='recipe_uses')
+    quantity = models.CharField(max_length=100, blank=True)
+    is_essential = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=['recipe', 'ingredient'], name='unique_recipe_ingredient')]
+
+    def __str__(self):
+        return f"{self.ingredient} in {self.recipe}"
     
 
 class Blog(models.Model):
